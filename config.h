@@ -174,7 +174,7 @@ public:
     }
 
 	bool keyIsNumber( const std::string &key ) const {
-		/*if (!keyExists(key)) {
+		if (!keyExists(key)) {
             std::cout << "Error! ";
 			exit(1);
 		}
@@ -185,8 +185,8 @@ public:
 		while (it != test.end() && (std::isdigit(*it) || (*it) == '.')) {
 			it++;
 		}
-		return !test.empty() && it == test.end();*/
-		return true;
+		return !test.empty() && it == test.end();
+		//return true;
 	}
 
     bool keyExists( const std::string &key ) const

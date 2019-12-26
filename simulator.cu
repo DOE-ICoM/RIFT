@@ -244,7 +244,7 @@ void Simulator::InitSimulation(void) {
 
 	
 	
-	int i;
+	// int i;
 		if (dambreak) {
 					std::cout << "This is a dam break" << std::endl; 
 
@@ -663,7 +663,7 @@ void Simulator::CloseSimulation(){
 double Simulator::RunSimulation() {
    
 	
-	tf;
+	// tf; 
    // while (t < tf) {
 	//updateSources();
 	checkCudaErrors(cudaMemcpy(source_idx_dev,source_idx,NumSources*sizeof(int),HtoD));
@@ -673,7 +673,7 @@ double Simulator::RunSimulation() {
 			UpdateSource();
 		}
 		//std::cout << "Grow Blocks" << std::endl; 
-		Grow(wet_blocks, active_blocks);
+		Grow(wet_blocks, active_blocks, hyetograph_gridded_rate, rainfall_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
         ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, BC, BX, BY, active_blocks,
 		              dt, n, hydrograph.interpolated_rate, dambreak_source_idx,

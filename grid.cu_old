@@ -650,6 +650,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	}
 	
 	if (dambreak||numSources>0) {
+		int counter;
 		for (int counter = 0; counter < numSources; counter++){
 		S0 = (j*nx + i == source_idx_dev[counter]) ? S0 + source_rate_dev[counter] : S0;
 		//if(S0>0.0f) printf("\nSource %g",S0);
@@ -796,14 +797,6 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 			*h_ij = hC;
 		}
 
-		if (q_print) {
-			double *q_ij = getElement(q, pitch, j, i);
-			double uC = getVelocity(hC, *hu_ij);
-			double vC = getVelocity(hC, *hv_ij);
-			*q_ij = hC*sqrtf(vC * vC + uC * uC);
-			// Add per Dave 11/6/2019 by cr
-		}
-
 		if (save_arrival_time) {
 			double *t_wet_ij = getElement(t_wet, pitch, j, i);
 			if (*t_wet_ij < 0.f && hC > epsilon) {
@@ -815,6 +808,7 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 
 		/** Changed for 1D-2D*/
 		if (dambreak||numSources>0) {
+			int counter;
 			for (int counter = 0; counter < numSources; counter++){
 					wet[tidy][tidx] = (j*nx + i == source_idx_dev[counter]) ? true : wet[tidy][tidx];
 			}
@@ -945,14 +939,6 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
 		double *h_ij = getElement(h, pitch, j, i);
 		*h_ij = hC;
 	}
-	
-	if (q_print) {
-		double *q_ij = getElement(q, pitch, j, i);
-		double uC = getVelocity(hC, *hu_ij);
-		double vC = getVelocity(hC, *hv_ij);
-		*q_ij = hC*sqrtf(vC * vC + uC * uC);
-		// Add per Dave 11/6/2019 by cr
-	}
 
 	if (save_arrival_time) {
 		double *t_wet_ij = getElement(t_wet, pitch, j, i);
@@ -964,6 +950,7 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
     wet[tidy][tidx] = (hC > epsilon) ? true : false;
 
 	if (dambreak||numSources>0) {
+		int counter;
 			for (int counter = 0; counter < numSources; counter++){
 					wet[tidy][tidx] = (j*nx + i == source_idx_dev[counter]) ? true : wet[tidy][tidx];
 			}
@@ -1061,55 +1048,15 @@ __global__ void Grow_k(bool *wet_blocks, int *active_blocks) {
         swet[row+1][col  ] || swet[row-1][col  ]) {
         active_blocks[j*nBlocksX+i] = j*nBlocksX+i;
     } else {
-        active_blocks[j*nBlocksX+i] = -(j*nBlocksX + i);
+        active_blocks[j*nBlocksX+i] = -1;
     }
 }
 
-__global__ void TrackRainfall_k(bool *wet_blocks, int *active_blocks, double *precip_dist, size_t pitch) {
-	
-	// already wet set up by other threads
-	if (wet_blocks[abs(active_blocks[blockIdx.x])]) return;
-
-	// Goal: find the global block ID# and set the wet_blocks
-	// sorted active_blocks give the src locations
-	int tidx = threadIdx.x;
-	int tidy = threadIdx.y;
-
-	// MJ: Why do these have abs() called? Blocks cant be negative?
-	int blockX = abs(active_blocks[blockIdx.x]) % nBlocksX;
-	int blockY = abs(active_blocks[blockIdx.x]) / nBlocksX;
-
-	int i = blockX * BLOCK_COLS + tidx + 2;
-	int j = blockY * BLOCK_COLS + tidy + 2;
-
-	if (i < 2 || j < 2 || i > nx - 3 || j > ny -3) return;
-
-	// check rain sources
-	double *precip_ij = getElement(precip_dist, pitch, j, i);
-	if (*precip_ij > epsilon) {
-		wet_blocks[abs(active_blocks[blockIdx.x])] = true;
-	}
-}
-
-void Grow(bool *wet_blocks, int *active_blocks, double *hyetograph_gridded_rate, bool h_rainfall_gridded) {
-	if ( h_rainfall_gridded ) {
-		thrust::device_ptr<int> dp_active_blocks = thrust::device_pointer_cast(active_blocks);
-		thrust::partition(dp_active_blocks, dp_active_blocks + GridSize, is_negative());
-		nBlocks = thrust::count_if(dp_active_blocks, dp_active_blocks + GridSize, is_negative());
-	
-		// Mark Jensen 12/19/19 - Added if statement this was erroring out in CUDA versions g.t. 9.0
-		// Thrust now checks thrust::partition below if cudaErrors are present if nBlock = 0 then a CUDA 
-		// error is thrown, this just tells the kernel to run when there are valid blocks
-		if (nBlocks > 0) {
-			TrackRainfall_k << < nBlocks, BlockDim >> > (wet_blocks, active_blocks, hyetograph_gridded_rate, pitch);
-		}
-	}
-
+void Grow(bool *wet_blocks, int *active_blocks) {
     Grow_k <<< GrowGrid, BlockDim >>> (wet_blocks, active_blocks);
 
     thrust::device_ptr<int> dp_active_blocks = thrust::device_pointer_cast(active_blocks);
     thrust::partition(dp_active_blocks, dp_active_blocks + GridSize, is_nonnegative());
-
 //    thrust::device_ptr<int> dp_exe_blocks    = thrust::device_pointer_cast(exe_blocks);
 
 //    thrust::remove(thrust::device, dp_active_blocks, dp_active_blocks + GridSize, -1);
