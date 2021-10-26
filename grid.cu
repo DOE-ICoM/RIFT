@@ -1038,14 +1038,62 @@ __global__ void Grow_k(bool *wet_blocks, int *active_blocks) {
     swet[threadIdx.y][threadIdx.x] = false;
 
 	if (threadIdx.x == 0 || i == 0) {
+		printf("In Grow_k (x/i == 0): \n"
+			   "  nBlocksX = %d, nBlocksY = %d\n"
+			   "  BLOCK_COLS = %d, BLOCK_ROWS = %d\n"
+			   "  threadIdx.x = %d, threadIdx.y = %d\n"
+			   "  blockIdx.x = %d, blockIdx.y = %d\n"
+			   "  row = %d, col = %d\n"
+			   "  i = %d, j = %d\n"
+			   "  j*nBlocksX+(i-1) = %d\n",
+			   nBlocksX, nBlocksY, BLOCK_COLS, BLOCK_ROWS, 
+			   threadIdx.x, threadIdx.y, 
+			   blockIdx.x, blockIdx.y,
+			   row, col, i, j, j*nBlocksX+(i-1));
 		swet[row  ][col-1] = (i > 0) ? wet_blocks[j*nBlocksX+(i-1)] : false;
 	} else if (threadIdx.x == BLOCK_COLS-1 || i == nBlocksX-1) {
+		printf("In Grow_k (x/i): \n"
+			   "  nBlocksX = %d, nBlocksY = %d\n"
+			   "  BLOCK_COLS = %d, BLOCK_ROWS = %d\n"
+			   "  threadIdx.x = %d, threadIdx.y = %d\n"
+			   "  blockIdx.x = %d, blockIdx.y = %d\n"
+			   "  row = %d, col = %d\n"
+			   "  i = %d, j = %d\n"
+			   "  j*nBlocksX+(i+1) = %d\n",
+			   nBlocksX, nBlocksY, BLOCK_COLS, BLOCK_ROWS, 
+			   threadIdx.x, threadIdx.y, 
+			   blockIdx.x, blockIdx.y,
+			   row, col, i, j, j*nBlocksX+(i+1));
 		swet[row  ][col+1] = (i < nBlocksX-1) ? wet_blocks[j*nBlocksX+(i+1)] : false;
 	}
 
 	if (threadIdx.y == 0  || j == 0) {
+		printf("In Grow_k (y/j == 0): \n"
+			   "  nBlocksX = %d, nBlocksY = %d\n"
+			   "  BLOCK_COLS = %d, BLOCK_ROWS = %d\n"
+			   "  threadIdx.x = %d, threadIdx.y = %d\n"
+			   "  blockIdx.x = %d, blockIdx.y = %d\n"
+			   "  row = %d, col = %d\n"
+			   "  i = %d, j = %d\n"
+			   "  (j-1)*nBlocksX+i = %d\n",
+			   nBlocksX, nBlocksY, BLOCK_COLS, BLOCK_ROWS, 
+			   threadIdx.x, threadIdx.y, 
+			   blockIdx.x, blockIdx.y,
+			   row, col, i, j, (j-1)*nBlocksX+i);
 		swet[row-1][col  ] = (j > 0) ? wet_blocks[(j-1)*nBlocksX+i] : false;
 	} else if (threadIdx.y == BLOCK_ROWS-1 || j == nBlocksY-1) {
+		printf("In Grow_k (y/j): \n"
+			   "  nBlocksX = %d, nBlocksY = %d\n"
+			   "  BLOCK_COLS = %d, BLOCK_ROWS = %d\n"
+			   "  threadIdx.x = %d, threadIdx.y = %d\n"
+			   "  blockIdx.x = %d, blockIdx.y = %d\n"
+			   "  row = %d, col = %d\n"
+			   "  i = %d, j = %d\n"
+			   "  (j+1)*nBlocksX+i = %d\n",
+			   nBlocksX, nBlocksY, BLOCK_COLS, BLOCK_ROWS, 
+			   threadIdx.x, threadIdx.y, 
+			   blockIdx.x, blockIdx.y,
+			   row, col, i, j, (j+1)*nBlocksX+i);
 		swet[row+1][col  ] = (j < nBlocksY-1) ? wet_blocks[(j+1)*nBlocksX+i] : false;
 	}
 
@@ -1259,3 +1307,8 @@ void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_
 	cudaFree(t_peak);				//added by Youcan on 20170908
 	cudaFree(t_dry);				//added by Youcan on 20170908
 }
+
+/* Local variables: */
+/* mode: c++ */
+/* tab-width: 4 */
+/* End: */
