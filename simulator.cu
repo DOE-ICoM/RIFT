@@ -814,3 +814,8 @@ void Simulator::updateSources(){
 	checkCudaErrors(cudaMemcpy(source_rate_dev, source_rate, NumSources*sizeof(double), HtoD));
 	//std::cout << "updated the source" << std::endl;
 }
+
+/* Local variables: */
+/* mode: c++ */
+/* tab-width: 4 */
+/* End: */
