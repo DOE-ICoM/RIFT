@@ -36,8 +36,6 @@ dim3 GrowGrid;
 
 size_t pitch, pitchBX, pitchBY;
 
-// int *exe_blocks;
-
 struct is_nonnegative {
     __host__ __device__
     bool operator()(const int x) {
@@ -372,12 +370,10 @@ std::endl;
 
     checkCudaErrors(cudaMalloc((void**)&wet_blocks,    GridSize*sizeof(bool) ));
     checkCudaErrors(cudaMalloc((void**)&active_blocks, GridSize*sizeof(int)  ));
-    // checkCudaErrors(cudaMalloc((void**)&exe_blocks,    GridSize*sizeof(int)  ));
     checkCudaErrors(cudaMalloc((void**)&mx,            GridSize*sizeof(double)));
 
     checkCudaErrors(cudaMemset(wet_blocks,    (bool) false, GridSize*sizeof(bool) ));
     checkCudaErrors(cudaMemset(active_blocks, (int)  -1,    GridSize*sizeof(int)  ));
-    // checkCudaErrors(cudaMemset(exe_blocks,    (int)  -1,    GridSize*sizeof(int)  ));
     checkCudaErrors(cudaMemset(mx,            (double) 0,    GridSize*sizeof(double)));
 }
 
@@ -1158,8 +1154,6 @@ void Grow(bool *wet_blocks, int *active_blocks, double *hyetograph_gridded_rate,
     thrust::device_ptr<int> dp_active_blocks = thrust::device_pointer_cast(active_blocks);
     thrust::partition(dp_active_blocks, dp_active_blocks + GridSize, is_nonnegative());
 
-//    thrust::device_ptr<int> dp_exe_blocks    = thrust::device_pointer_cast(exe_blocks);
-
 //    thrust::remove(thrust::device, dp_active_blocks, dp_active_blocks + GridSize, -1);
     nBlocks = thrust::count_if(dp_active_blocks, dp_active_blocks + GridSize, is_nonnegative());
 //    std::cout << nBlocks << std::endl;
@@ -1167,9 +1161,6 @@ void Grow(bool *wet_blocks, int *active_blocks, double *hyetograph_gridded_rate,
                                GridSize, is_nonnegative());*/
     /*thrust::stable_sort(dp_active_blocks, dp_active_blocks + GridSize,
                         thrust::greater<int>());*/
-//    thrust::device_ptr<int> dp_exe_blocks    = thrust::device_pointer_cast(exe_blocks);
-
-
 
 //    thrust::copy_if(dp_active_blocks, dp_active_blocks + GridSize,
 //                    dp_exe_blocks, is_nonnegative());
@@ -1291,7 +1282,6 @@ void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_
     cudaFree(mx);
     cudaFree(wet_blocks);
     cudaFree(active_blocks);
-	// cudaFree(exe_blocks);
 	cudaFree(hyetograph_gridded_rate);
 	cudaFree(n);
 	cudaFree(F);
