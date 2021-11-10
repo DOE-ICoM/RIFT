@@ -368,9 +368,11 @@ std::endl;
     GrowGrid.x = ceil((double)GridDim.x / (double)BlockDim.x);
     GrowGrid.y = ceil((double)GridDim.y / (double)BlockDim.y);
 
-    checkCudaErrors(cudaMalloc((void**)&wet_blocks,    GridSize*sizeof(bool) ));
-    checkCudaErrors(cudaMalloc((void**)&active_blocks, GridSize*sizeof(int)  ));
-    checkCudaErrors(cudaMalloc((void**)&mx,            GridSize*sizeof(double)));
+    size_t GrowGridSize = (GrowGrid.x*BLOCK_COLS)*(GrowGrid.y*BLOCK_ROWS);
+
+    checkCudaErrors(cudaMalloc((void**)&wet_blocks,    GrowGridSize*sizeof(bool) ));
+    checkCudaErrors(cudaMalloc((void**)&active_blocks, GrowGridSize*sizeof(int)  ));
+    checkCudaErrors(cudaMalloc((void**)&mx,            GrowGridSize*sizeof(double)));
 
     checkCudaErrors(cudaMemset(wet_blocks,    (bool) false, GridSize*sizeof(bool) ));
     checkCudaErrors(cudaMemset(active_blocks, (int)  -1,    GridSize*sizeof(int)  ));
