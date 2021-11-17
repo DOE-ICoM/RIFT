@@ -1257,4 +1257,5 @@ void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_
 /* Local variables: */
 /* mode: c++ */
 /* tab-width: 4 */
+/* c-basic-offset: 4 */
 /* End: */

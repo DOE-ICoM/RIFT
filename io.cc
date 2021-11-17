@@ -238,48 +238,60 @@ Grid *CreateGrid(int num_columns, int num_rows, double xll, double yll,
 }
 
 void SetOriginalGrid(double *G_original, std::string filename) {
-    std::ifstream ifs(filename.c_str());
-
-    if (ifs.fail()) {
-      std::string msg = filename + ": error: cannot open";
-      throw std::runtime_error(msg);
+    std::ifstream ifs;
+	
+    ifs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    try {
+        ifs.open(filename.c_str());
+    } catch (std::ifstream::failure& e) {
+        std::cerr << filename << ": error: cannot open"
+                  << std::endl;
+        throw e;
     }
     
     std::string dummy; // used to read in preceding words (e.g., ncols, nrows)
 	double      junk;
+    int line = 1;
 
-    ifs >> dummy;
-    ifs >> junk;
+    try {
+        ifs >> dummy;
+        ifs >> junk; line++;
 
-    ifs >> dummy;
-    ifs >> junk;
+        ifs >> dummy;
+        ifs >> junk; line++;
 
-    ifs >> dummy;
-    ifs >> junk;
+        ifs >> dummy;
+        ifs >> junk; line++;
 
-    ifs >> dummy;
-    ifs >> junk;
+        ifs >> dummy;
+        ifs >> junk; line++;
     
-    ifs >> dummy;
-    ifs >> junk;
+        ifs >> dummy;
+        ifs >> junk; line++;
     
-    ifs >> dummy;
-    double nodata;
-    ifs >> nodata;
+        ifs >> dummy;
+        double nodata;
+        ifs >> nodata; line++;
 
-    double value;
-    // Gridded data must be read in a "flipped" fashion
-    for (int j = b_ny - 1; j >= 0; j--) {
-        for (int i = 0; i < b_nx; i++) {
-            int id = j*b_nx + i;
-            ifs >> value;
-            if (value == nodata) {
-                printf("There are NODATA values present in the DEM. Exiting.\n");
-                exit(1);
-            } else {
-                G_original[id] = value;
+        double value;
+        // Gridded data must be read in a "flipped" fashion
+        for (int j = b_ny - 1; j >= 0; j--, line++) {
+            for (int i = 0; i < b_nx; i++) {
+                int id = j*b_nx + i;
+                ifs >> value;
+                if (value == nodata) {
+                    printf("There are NODATA values present in the DEM. Exiting.\n");
+                    exit(1);
+                } else {
+                    G_original[id] = value;
+                }
             }
         }
+        ifs.close();
+    } catch (std::ifstream::failure& e) {
+        std::cerr << filename << ": read error at line " << line
+                  << std::endl;
+        throw e;
     }
 }
 
