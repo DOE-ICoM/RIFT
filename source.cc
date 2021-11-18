@@ -3,39 +3,50 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <exception>
 #include "source.h"
 
 using namespace std;
 
 void Source::ReadSource(std::string filename) {
-    fstream file(filename.c_str()); 
+    fstream file; 
     string line;
-
-    while (getline(file, line)) {
-        // Remove white space from the beginning of the string.
-        /*line.erase(line.begin(), find_if(line.begin(), line.end(), 
-                   not1(ptr_fun<int, int>(isspace))));
-        */
-        // If the line of the file begins with '#', skip it.
-        if (line[0] == '#') {
-            continue;
-        }
-        
-        // Read the comma-delimited source file
-        std::string data;
-        float value;
-        int count = 0;
-        stringstream linestream(line);
-        while (getline(linestream, data, ',')) {
-            stringstream(data) >> value;
-            if (count == 0) {
-                time.push_back(value*60*60);
-            } else { 
-                rate.push_back(value);
-				//std::cout << value << endl;
+    int lno = 1;
+    
+    file.open(filename.c_str());
+    if (file.is_open()) {
+        while (getline(file, line)) {
+            lno++;
+            // Remove white space from the beginning of the string.
+            /*line.erase(line.begin(), find_if(line.begin(), line.end(), 
+              not1(ptr_fun<int, int>(isspace))));
+            */
+            // If the line of the file begins with '#', skip it.
+            if (line[0] == '#') {
+                continue;
             }
-            count++;
+        
+            // Read the comma-delimited source file
+            std::string data;
+            float value;
+            int count = 0;
+            stringstream linestream(line);
+            while (getline(linestream, data, ',')) {
+                stringstream(data) >> value;
+                if (count == 0) {
+                    time.push_back(value*60*60);
+                } else { 
+                    rate.push_back(value);
+                    //std::cout << value << endl;
+                }
+                count++;
+            }
         }
+        file.close();
+    } else {
+        std::string msg(filename);
+        msg += ": error: cannot open";
+        throw std::runtime_error(msg);
     }
 
     // If the source file ends with a nonzero rate, append a zero rate
