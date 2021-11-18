@@ -556,9 +556,32 @@ void Simulator::PrintSummaryData(void) {
 		tmax_name << output_file << "/time_to_peak.txt";									// added by Youcan on 20170424
 		tdry_name << output_file << "/time_to_dry.txt";										// added by Youcan on 20170830
 		hmax.open((hmax_name.str()).c_str());
+        if (!hmax.is_open()) {
+            std::string msg(hmax_name.str());
+            msg += ": error: cannot open for writing";
+            throw std::runtime_error(msg);
+        }
+
 		qmax.open((qmax_name.str()).c_str());
-		tmax.open((tmax_name.str()).c_str());												// added by Youcan on 20170424
+        if (!qmax.is_open()) {
+            std::string msg(qmax_name.str());
+            msg += ": error: cannot open for writing";
+            throw std::runtime_error(msg);
+        }
+
+		tmax.open((tmax_name.str()).c_str());									        if (!tmax.is_open()) {
+            std::string msg(tmax_name.str());
+            msg += ": error: cannot open for writing";
+            throw std::runtime_error(msg);
+        }
+        
+			// added by Youcan on 20170424
 		tdry.open((tdry_name.str()).c_str());												// added by Youcan on 20170830
+        if (!tdry.is_open()) {
+            std::string msg(tdry_name.str());
+            msg += ": error: cannot open for writing";
+            throw std::runtime_error(msg);
+        }
 
 		writeHeader(hmax);
 		writeHeader(qmax);
