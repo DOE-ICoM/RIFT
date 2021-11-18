@@ -2,7 +2,9 @@
 #include <iomanip>
 #include <fstream>
 #include <math.h>
+#include <string>
 #include <sstream>
+#include <stdexcept>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
@@ -432,15 +434,15 @@ void Simulator::ComputeTimestep() {
 	//std::cout << "time step is " << dt << std::endl; 
 }
 
-void writeHeader(std::ofstream &filename) {
-    filename.precision(dbl::digits10);
-	filename << "ncols         " << h_nx - 4          << std::endl;
-	filename << "nrows         " << h_ny - 4          << std::endl;
-	filename << "xllcorner     " << h_xll             << std::endl;
-	filename << "yllcorner     " << h_yll             << std::endl;
-	filename << "cellsize      " << cellsize_original << std::endl;
-	filename << "NODATA_value  " << -9999             << std::endl;
-    filename.precision(flt::digits10);
+void writeHeader(std::ofstream &thefile) {
+    thefile.precision(dbl::digits10);
+	thefile << "ncols         " << h_nx - 4          << std::endl;
+	thefile << "nrows         " << h_ny - 4          << std::endl;
+	thefile << "xllcorner     " << h_xll             << std::endl;
+	thefile << "yllcorner     " << h_yll             << std::endl;
+	thefile << "cellsize      " << cellsize_original << std::endl;
+	thefile << "NODATA_value  " << -9999             << std::endl;
+    thefile.precision(flt::digits10);
 }
 
 void Simulator::PrintData(void) {
@@ -458,16 +460,21 @@ void Simulator::PrintData(void) {
 		filename_h << output_file << "/h" << count_print << ".txt";
 		std::ofstream heights;
 		heights.open((filename_h.str()).c_str());
-		writeHeader(heights);
-
-		for (int j = h_ny - 3; j >= 2; j--) {
-			for (int i = 2; i < h_nx-2; i++) {
-				int   id = j*h_nx + i;
-				heights << h_h[id] << " ";
-				if (h_h[id] > 0) wet_count++;
-			}
-			heights << std::endl;
-		}
+        if (heights.is_open()) {
+          writeHeader(heights);
+          for (int j = h_ny - 3; j >= 2; j--) {
+              for (int i = 2; i < h_nx-2; i++) {
+                  int   id = j*h_nx + i;
+                  heights << h_h[id] << " ";
+                  if (h_h[id] > 0) wet_count++;
+              }
+              heights << std::endl;
+          }
+        } else {
+            std::string msg(filename_h.str());
+            msg += std::string(": error: cannot open for writing");
+            throw std::runtime_error(msg);
+        }
 		heights.close();
 	}
 
@@ -508,16 +515,21 @@ void Simulator::PrintData(void) {
 		filename_q << output_file << "/q" << count_print << ".txt";
 		std::ofstream discharge;
 		discharge.open((filename_q.str()).c_str());
-
-		writeHeader(discharge);
-		for (int j = h_ny - 3; j >= 2; j--) {
-			for (int i = 2; i < h_nx-2; i++) {
-				int id = j*h_nx + i;
-				discharge << h_q[id] << " ";
-			}
-			discharge << std::endl;
-		}
-		discharge.close();
+        if (discharge.is_open()) {
+            writeHeader(discharge);
+            for (int j = h_ny - 3; j >= 2; j--) {
+                for (int i = 2; i < h_nx-2; i++) {
+                    int id = j*h_nx + i;
+                    discharge << h_q[id] << " ";
+                }
+                discharge << std::endl;
+            }
+            discharge.close();
+        } else {
+            std::string msg(filename_q.str());
+            msg += std::string(": error: cannot open for writing");
+            throw std::runtime_error(msg);
+        }
 	}
 
     count_print++;
@@ -818,4 +830,5 @@ void Simulator::updateSources(){
 /* Local variables: */
 /* mode: c++ */
 /* tab-width: 4 */
+/* c-basic-offset: 4 */
 /* End: */
