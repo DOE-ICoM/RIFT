@@ -60,3 +60,9 @@ void Source::InterpolateRate(float sim_time) {
         }
     }
 }
+
+/* Local variables: */
+/* mode: c++ */
+/* tab-width: 4 */
+/* c-basic-offset: 4 */
+/* End: */
