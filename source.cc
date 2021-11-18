@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
-#include <exception>
+#include <stdexcept>
 #include "source.h"
 
 using namespace std;
