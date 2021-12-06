@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <fstream>
+#include <sstream>
 #include <omp.h>
 #include <iostream>
 #include <exception>
@@ -103,6 +104,7 @@ void ReadOriginalGrid(double *&G_original, std::string filename) {
     std::ifstream ifs;
     std::string dummy; // used to read in preceding words (e.g., ncols, nrows)
 	double      junk;
+    int ncols, nrows;
     int line = 1;
 	
     ifs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -117,10 +119,18 @@ void ReadOriginalGrid(double *&G_original, std::string filename) {
     try {
 
         ifs >> dummy;
-        ifs >> junk; line++;
+        ifs >> ncols; line++;
 
         ifs >> dummy;
-        ifs >> junk; line++;
+        ifs >> nrows; line++;
+
+        if (b_ny != nrows || b_nx != ncols) {
+            std::ostringstream msg;
+            msg << filename << ": incorrect size: "
+                << " got (" << nrows << "x" << ncols << ")"
+                << " expected (" << b_ny << "x" << b_nx << ")";
+            throw std::runtime_error(msg.str());
+        }
 
         ifs >> dummy;
         ifs >> junk; line++;
@@ -251,14 +261,22 @@ void SetOriginalGrid(double *G_original, std::string filename) {
     
     std::string dummy; // used to read in preceding words (e.g., ncols, nrows)
 	double      junk;
-    int line = 1;
+    int nrows, ncols, line = 1;
 
     try {
         ifs >> dummy;
-        ifs >> junk; line++;
+        ifs >> ncols; line++;
 
         ifs >> dummy;
-        ifs >> junk; line++;
+        ifs >> nrows; line++;
+
+        if (b_ny != nrows || b_nx != ncols) {
+            std::ostringstream msg;
+            msg << filename << ": incorrect size: "
+                << " got (" << nrows << "x" << ncols << ")"
+                << " expected (" << b_ny << "x" << b_nx << ")";
+            throw std::runtime_error(msg.str());
+        }
 
         ifs >> dummy;
         ifs >> junk; line++;
