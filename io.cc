@@ -3,7 +3,7 @@
 #include <sstream>
 #include <omp.h>
 #include <iostream>
-#include <exception>
+#include <stdexcept>
 #include "constants.h"
 #include "io.h"
 
