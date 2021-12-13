@@ -1038,9 +1038,9 @@ __global__ void Grow_k(bool *wet_blocks, int *active_blocks) {
     swet[threadIdx.y][threadIdx.x] = false;
 
 	if (threadIdx.x == 0 || i == 0) {
-		swet[row  ][col-1] = (i > 0) ? wet_blocks[j*nBlocksX+(i-1)] : false;
+		swet[row  ][col-1] = (i > 0 && j < nBlocksY) ? wet_blocks[j*nBlocksX+(i-1)] : false;
 	} else if (threadIdx.x == BLOCK_COLS-1 || i == nBlocksX-1) {
-		swet[row  ][col+1] = (i < nBlocksX-1) ? wet_blocks[j*nBlocksX+(i+1)] : false;
+		swet[row  ][col+1] = (i < nBlocksX-1 && j < nBlocksY) ? wet_blocks[j*nBlocksX+(i+1)] : false;
 	}
 
 	if (threadIdx.y == 0  || j == 0) {
