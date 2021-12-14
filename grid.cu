@@ -464,6 +464,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	__shared__ double dwp [BLOCK_ROWS+1][BLOCK_COLS+1];
 	__shared__ double dhup[BLOCK_ROWS+1][BLOCK_COLS+1];
 	__shared__ double dhvp[BLOCK_ROWS+1][BLOCK_COLS+1];
+    __shared__ double mxsum[BLOCK_ROWS][BLOCK_COLS];
 
     __syncthreads();
 
@@ -677,16 +678,16 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
     *dhu_ij += S1;
     *dhv_ij += S2;
 
-    sw[tidy][tidx] = smx;
+    mxsum[tidy][tidx] = smx;
     if (i > nx - 3 || j > ny - 3) {
-        sw[tidy][tidx] = 0.f;
+        mxsum[tidy][tidx] = 0.f;
     }
 
     __syncthreads();
 			
 	if (tidx == 0) {
 		for (int k = 0; k < BLOCK_COLS; k++) {
-			sw[tidy][tidx] = fmaxf(sw[tidy][tidx], sw[tidy][k]);
+			mxsum[tidy][tidx] = fmaxf(mxsum[tidy][tidx], mxsum[tidy][k]);
 		}
 	}
 
@@ -694,9 +695,9 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 
 	if (tidy == 0 && tidx == 0) {
 		for (int l = 0; l < BLOCK_ROWS; l++) {
-			sw[tidy][tidx] = fmaxf(sw[tidy][tidx], sw[l][tidx]);
+			mxsum[tidy][tidx] = fmaxf(mxsum[tidy][tidx], mxsum[l][tidx]);
 		}
-		mx[blockY*nBlocksX+blockX] = sw[tidy][tidx];
+		mx[blockY*nBlocksX+blockX] = mxsum[tidy][tidx];
 	}
 }
 

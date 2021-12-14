@@ -431,7 +431,10 @@ void Simulator::ComputeTimestep() {
 
 	dt = (t == 0.f) ? dt = 0.000001f : dt;	
 	t += dt;
-	//std::cout << "time step is " << dt << std::endl; 
+    // std::cout << "max_x = " << max_x
+    //           << ", at mxresptr = " << mxresptr - mxptr
+    //           << std::endl;
+	// std::cout << "time step is " << dt << std::endl; 
 }
 
 void writeHeader(std::ofstream &thefile) {
