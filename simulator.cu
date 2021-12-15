@@ -62,19 +62,18 @@ void Simulator::ReadUserParams(std::string config_file) {
 		output_file = "c:/temp/";
 	}
 
+    n_gridded = false;
+    n_const = 0.f;
 	if (cfg.keyExists("n")) {
 		if (cfg.keyIsNumber("n")) {
-			n_gridded = false;
 			n_const = cfg.getValueOfKey<double>("n");
 		} else {
 			n_gridded = true;
 			n_file    = cfg.getValueOfKey<std::string>("n");
-		}
-	} else {
-		n_gridded = false;
-		n_const = 0.f;
-	}
+    		}
+    }
 
+    
 	if (cfg.keyExists("K")) {
 		infiltration = true;
 		K_file       = cfg.getValueOfKey<std::string>("K");
@@ -231,12 +230,12 @@ void Simulator::InitSimulation(void) {
 		ReadOriginalGrid(hyetograph_o, hyetograph_file);
 	}
 	
-	if (n_gridded) {
-		n_o = (double*)malloc(b_nx*b_ny*sizeof(double));
-		h_n = (double*)malloc(h_nx*h_ny*sizeof(double));
-		memset(h_n, 0, h_nx*h_ny*sizeof(double));
+    h_n = (double*)malloc(h_nx*h_ny*sizeof(double));
+    memset(h_n, 0, h_nx*h_ny*sizeof(double));
+    if (n_gridded) {
+        n_o = (double*)malloc(b_nx*b_ny*sizeof(double));
 		ReadOriginalGrid(n_o, n_file);
-	}
+    } 
 	
 	if (infiltration) {
 		K_o = (double*)malloc(b_nx*b_ny*sizeof(double));
@@ -266,9 +265,9 @@ void Simulator::InitSimulation(void) {
 	AllocateGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, BC, BX, BY,
                  wet_blocks, active_blocks, n, hyetograph_gridded_rate, F,
                  F_old, dF, K, h, q, h_max, q_max, t_wet, dambreak,
-	             rainfall_averaged, rainfall_gridded, infiltration, n_gridded,
+	             rainfall_averaged, rainfall_gridded, infiltration, 
 	             euler_integration, check_volume, h_init, h_print, q_print,
-	             save_max, save_arrival_time, n_const, psi, dtheta, time_peak, time_dry);	//added time_peak and time_dry by Youcan on 20170908
+	             save_max, save_arrival_time, psi, dtheta, time_peak, time_dry);	//added time_peak and time_dry by Youcan on 20170908
 
 
 
@@ -322,7 +321,9 @@ void Simulator::InitSimulation(void) {
 
 			if (n_gridded) {
 				h_n[j*h_nx+i] = 0.25f * (n_o[ur]+n_o[lr]+n_o[ll]+n_o[ul]);
-			}
+			}  else {
+                h_n[j*h_nx+i] = n_const;
+            }
 
 			if (infiltration) {
 				h_K[j*h_nx+i] = 0.25f * (K_o[ur]+K_o[lr]+K_o[ll]+K_o[ul]);
@@ -348,10 +349,8 @@ void Simulator::InitSimulation(void) {
 									 HtoD));
 	}
 
-	if (n_gridded) {
-		checkCudaErrors(cudaMemcpy2D(n, pitch, h_n, h_nx*sizeof(double),
-									 h_nx*sizeof(double), h_ny, HtoD));
-	}
+    checkCudaErrors(cudaMemcpy2D(n, pitch, h_n, h_nx*sizeof(double),
+                                 h_nx*sizeof(double), h_ny, HtoD));
 
 	if (infiltration) {
 		checkCudaErrors(cudaMemcpy2D(K, pitch, h_K, h_nx*sizeof(double),

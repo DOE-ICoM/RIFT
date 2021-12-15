@@ -18,11 +18,11 @@
 #define BLOCK_ROWS 14
 #define BLOCK_COLS 16
 
-__constant__ bool  dambreak, rainfall_averaged, rainfall_gridded, infiltration, n_gridded;
+__constant__ bool  dambreak, rainfall_averaged, rainfall_gridded, infiltration;
 __constant__ bool  euler_integration, check_volume;
 __constant__ bool  h_init, h_print, q_print, save_max, save_arrival_time;
 __constant__ int   nx, ny, nBlocksX, nBlocksY;
-__constant__ double dx, dy, kappa, psi, dtheta, n_const;
+__constant__ double dx, dy, kappa, psi, dtheta;
 __constant__ double g       = 9.80665f;
 __constant__ double epsilon = 1.19209e-07f;
 __constant__ double theta   = 1.3f;
@@ -246,16 +246,16 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   double *&dF, double *&K, double *&h, double *&q, double *&h_max,
                   double *&q_max, double *&t_wet, bool h_dambreak,
                   bool h_rainfall_averaged, bool h_rainfall_gridded, bool h_infiltration,
-                  bool h_n_gridded, bool h_euler_integration,
+                  bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
                   bool h_q_print, bool h_save_max, bool h_save_arrival_time,
-                  double h_n_const, double h_psi, double h_dtheta, double *&t_peak, double *&t_dry) {	//added time_peak and time_dry by Youcan on 20170908
+                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry) {	//added time_peak and time_dry by Youcan on 20170908
 //10000196001000
 //100000001000
 
 
 	std::cout << h_dambreak << h_rainfall_averaged << h_rainfall_gridded <<
-h_infiltration << h_n_gridded << h_euler_integration << h_check_volume <<
+h_infiltration << h_euler_integration << h_check_volume <<
 h_h_init << h_h_print << h_q_print << h_save_max << h_save_arrival_time <<
 std::endl;
 
@@ -263,7 +263,6 @@ std::endl;
     cudaMemcpyToSymbol(rainfall_averaged, &h_rainfall_averaged, sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(rainfall_gridded,  &h_rainfall_gridded,  sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(infiltration,      &h_infiltration,      sizeof(bool), 0, HtoD);
-    cudaMemcpyToSymbol(n_gridded,         &h_n_gridded,         sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(euler_integration, &h_euler_integration, sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(check_volume,      &h_check_volume,      sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(h_init,            &h_h_init,            sizeof(bool), 0, HtoD);
@@ -337,13 +336,8 @@ std::endl;
 										   0, cudaMemcpyHostToDevice));
 	}
 
-	if (h_n_gridded) {
-		checkCudaErrors(cudaMallocPitch((void**)&n, &pitch, width, height));
-		checkCudaErrors(cudaMemset2D(n, pitch, 0, width, height));
-	} else {
-		checkCudaErrors(cudaMemcpyToSymbol(n_const, &h_n_const, sizeof(double),
-										   0, cudaMemcpyHostToDevice));
-	}
+    checkCudaErrors(cudaMallocPitch((void**)&n, &pitch, width, height));
+    checkCudaErrors(cudaMemset2D(n, pitch, 0, width, height));
 
 	if (h_save_max) {
 		checkCudaErrors(cudaMallocPitch((void**)&h_max, &pitch, width, height));
@@ -621,16 +615,9 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	S1 *= -g * hC;
 	S2 *= -g * hC;
 
-	if (n_gridded) {
+	{
 		double *n_ij = getElement(n, pitch, j, i);
 		double C = -4.f*g*(*n_ij)*(*n_ij)*sqrtf((*hu_ij)*(*hu_ij) +
-											   (*hv_ij)*(*hv_ij)) *
-				  powf(hC, 5.f/3.f) / powf((hC*hC + fmaxf(hC*hC, kappa)), 2.f);
-
-		S1 += C * (*hu_ij);
-		S2 += C * (*hv_ij);
-	} else {
-		double C = -4.f*g*n_const*n_const*sqrtf((*hu_ij)*(*hu_ij) +
 											   (*hv_ij)*(*hv_ij)) *
 				  powf(hC, 5.f/3.f) / powf((hC*hC + fmaxf(hC*hC, kappa)), 2.f);
 
