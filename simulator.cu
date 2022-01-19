@@ -25,7 +25,7 @@ typedef std::numeric_limits<double>  flt;
 // Define device arrays
 double *w, *hu, *hv, *w_old, *hu_old, *hv_old, *dw, *dhu, *dhv, *mx, *BC, *BX,
       *BY, *n, *hyetograph_gridded_rate, *F, *F_old, *dF, *K, *h, *q, *h_max,
-      *q_max, *t_wet, *time_peak, *time_dry;									//added time_peak and time_dry by Youcan on 20170908
+	*q_max, *t_wet, *time_peak, *time_dry, *G;									//added time_peak and time_dry by Youcan on 20170908
 bool *wet_blocks;
 int *active_blocks;
 int wet_count;
@@ -267,7 +267,7 @@ void Simulator::InitSimulation(void) {
                  F_old, dF, K, h, q, h_max, q_max, t_wet, dambreak,
 	             rainfall_averaged, rainfall_gridded, infiltration, 
 	             euler_integration, check_volume, h_init, h_print, q_print,
-	             save_max, save_arrival_time, psi, dtheta, time_peak, time_dry);	//added time_peak and time_dry by Youcan on 20170908
+	             save_max, save_arrival_time, psi, dtheta, time_peak, time_dry, G);	//added time_peak and time_dry by Youcan on 20170908
 
 
 
@@ -366,7 +366,7 @@ void Simulator::InitSimulation(void) {
 	}
 
 	InitGrid(w, hu, hv, w_old, hu_old, hv_old, BC, BX, BY, wet_blocks,
-	         active_blocks, h, t_wet);
+	         active_blocks, h, t_wet, G);
 }
 
 void Simulator::StartTimer() {
@@ -670,7 +670,7 @@ void Simulator::CloseSimulation(){
 
 	FreeGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, BC, BX, BY,
 	         wet_blocks, active_blocks, n, hyetograph_gridded_rate, F, F_old,
-             dF, K, h, q, h_max, q_max, t_wet, time_peak, time_dry);		//added t_peak and t_dry by Youcan on 20170908
+             dF, K, h, q, h_max, q_max, t_wet, time_peak, time_dry, G);		//added t_peak and t_dry by Youcan on 20170908
 
     free(b);
     free(h_BX);
@@ -712,14 +712,14 @@ double Simulator::RunSimulation() {
 		//std::cout << "Grow Blocks" << std::endl; 
 		Grow(wet_blocks, active_blocks, hyetograph_gridded_rate, rainfall_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
-        ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, BC, BX, BY, active_blocks,
+        ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, BC, BX, BY, G, active_blocks,
 		              dt, n, hydrograph.interpolated_rate, dambreak_source_idx,
 		              hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
 					  F_old, dF, K,source_idx_dev,source_rate_dev,NumSources);
 		ComputeTimestep();
 
 		Integrate_1(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, BC,
-					wet_blocks, active_blocks, t, dt,
+					G, wet_blocks, active_blocks, t, dt,
                     hydrograph.interpolated_rate, dambreak_source_idx,
                     hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
                     F_old, dF, K, h, q, h_max, q_max, t_wet,source_idx_dev, source_rate_dev,NumSources, time_peak, time_dry);	//added time_peak and time_dry by Youcan on 20170908
@@ -727,12 +727,12 @@ double Simulator::RunSimulation() {
 
 		if (!euler_integration) {
 			
-			ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, BC, BX, BY, active_blocks,
+			ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, BC, BX, BY, G, active_blocks,
 						  dt, n, hydrograph.interpolated_rate, dambreak_source_idx,
 						  hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
 						  F_old, dF, K,source_idx_dev, source_rate_dev,NumSources);
 			Integrate_2(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, BC,
-						wet_blocks, active_blocks, t, dt,
+						G, wet_blocks, active_blocks, t, dt,
 						hydrograph.interpolated_rate, dambreak_source_idx,
 						hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
 						F_old, dF, K, h, q, h_max, q_max, t_wet,source_idx_dev, source_rate_dev,NumSources);

@@ -16,22 +16,22 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
                   bool h_q_print, bool h_save_max, bool h_save_arrival_time,
-                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry);	//added time_peak and time_dry by Youcan on 20170908
+                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G);	//added time_peak and time_dry by Youcan on 20170908
 
 void InitGrid(double *w, double *hu, double *hv, double *w_old, double *hu_old,
               double *hv_old, double *BC, double *BX, double *BY, bool *wet_blocks,
-              int *active_blocks, double *h, double *t_wet);
+              int *active_blocks, double *h, double *t_wet, double *G);
 
 void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
                    double *dhv, double *mx, double *BC, double *BX, double *BY,
-                   int *active_blocks, double dt, double *n,
+                   double *G, int *active_blocks, double dt, double *n,
                    double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate, double *hyetograph_gridded_rate,
                    double *F, double *F_old, double *dF, double *K,int *source_idx_dev, double *source_rate_dev, long numSources);
 
 void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_old,
                  double *hv_old, double *dw, double *dhu, double *dhv, double *BC,
-                 bool *wet_blocks, int *active_blocks, double t, double dt,
+                 double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
                  double *F, double *F_old, double *dF, double *K, double *h,
@@ -39,7 +39,7 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
 
 void Integrate_2(double *w, double *hu, double *hv, double *w_old, double *hu_old,
                  double *hv_old, double *dw, double *dhu, double *dhv, double *BC,
-                 bool *wet_blocks, int *active_blocks, double t, double dt,
+                 double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
                  double *F, double *F_old, double *dF, double *K, double *h,
@@ -54,6 +54,7 @@ void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_
               double *&BC, double *&BX, double *&BY, bool *&wet_blocks,
               int *&active_blocks, double *&n, double *&hyetograph_gridded_rate,
               double *&F, double *&F_old, double *&dF, double *&K, double *&h,
-              double *&q, double *&h_max, double *&q_max, double *&t_wet, double *&t_peak, double *&t_dry);	//added t_peak and t_dry by Youcan on 20170908
+              double *&q, double *&h_max, double *&q_max, double *&t_wet, double *&t_peak, 
+	      double *&t_dry, double *&G);	//added t_peak and t_dry by Youcan on 20170908
 
 #endif

@@ -249,7 +249,7 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
                   bool h_q_print, bool h_save_max, bool h_save_arrival_time,
-                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry) {	//added time_peak and time_dry by Youcan on 20170908
+                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G) {	//added time_peak and time_dry by Youcan on 20170908
 //10000196001000
 //100000001000
 
@@ -282,6 +282,7 @@ std::endl;
     checkCudaErrors(cudaMallocPitch((void**)&w_old,  &pitch,   width, height ));
     checkCudaErrors(cudaMallocPitch((void**)&hu_old, &pitch,   width, height ));
     checkCudaErrors(cudaMallocPitch((void**)&hv_old, &pitch,   width, height ));
+    checkCudaErrors(cudaMallocPitch((void**)&G,      &pitch,   width, height ));
     checkCudaErrors(cudaMallocPitch((void**)&dw,     &pitch,   width, height ));
     checkCudaErrors(cudaMallocPitch((void**)&dhu,    &pitch,   width, height ));
     checkCudaErrors(cudaMallocPitch((void**)&dhv,    &pitch,   width, height ));
@@ -295,6 +296,7 @@ std::endl;
     checkCudaErrors(cudaMemset2D(w_old,  pitch,   0, width,    height   ));
     checkCudaErrors(cudaMemset2D(hu_old, pitch,   0, width,    height   ));
     checkCudaErrors(cudaMemset2D(hv_old, pitch,   0, width,    height   ));
+    checkCudaErrors(cudaMemset2D(G,      pitch,   0, width,    height   ));
     checkCudaErrors(cudaMemset2D(dw,     pitch,   0, width,    height   ));
     checkCudaErrors(cudaMemset2D(dhu,    pitch,   0, width,    height   ));
     checkCudaErrors(cudaMemset2D(dhv,    pitch,   0, width,    height   ));
@@ -377,7 +379,7 @@ __global__ void InitGrid_k(double *w, double *hu, double  *hv, double *w_old,
                            double *hu_old, double *hv_old, double *BC, double *BX,
                            double *BY, bool *wet_blocks, int *active_blocks,
                            size_t pitch, size_t pitchBX, size_t pitchBY,
-                           double *h, double *t_wet) {
+                           double *h, double *t_wet, double *G) {
     int i = blockIdx.x*BLOCK_COLS + threadIdx.x + 2;
     int j = blockIdx.y*BLOCK_ROWS + threadIdx.y + 2;
 
@@ -395,6 +397,8 @@ __global__ void InitGrid_k(double *w, double *hu, double  *hv, double *w_old,
 	double *w_old_ij  = getElement(w_old,  pitch, j, i);
 	double *hu_old_ij = getElement(hu_old, pitch, j, i);
 	double *hv_old_ij = getElement(hv_old, pitch, j, i);
+	double *G_ij	  = getElement(G,      pitch, j, i);
+
 
 	double *BC_ij     = getElement(BC, pitch,   j,   i  );
 	double *BE_ij     = getElement(BX, pitchBX, j,   i+1);
@@ -406,6 +410,7 @@ __global__ void InitGrid_k(double *w, double *hu, double  *hv, double *w_old,
 	*w_ij  = *w_old_ij  = *BC_ij;
 	*hu_ij = *hu_old_ij = 0.f;
 	*hv_ij = *hv_old_ij = 0.f;
+    *G_ij = 0.0f;
 
 	if (h_init) {
 		double *h_ij = getElement(h, pitch, j, i);
@@ -422,15 +427,15 @@ __global__ void InitGrid_k(double *w, double *hu, double  *hv, double *w_old,
 
 void InitGrid(double *w, double *hu, double *hv, double *w_old, double *hu_old,
               double *hv_old, double *BC, double *BX, double *BY, bool *wet_blocks,
-              int *active_blocks, double *h, double *t_wet) {
+              int *active_blocks, double *h, double *t_wet, double *G) {
 	InitGrid_k <<< GridDim, BlockDim >>> (w, hu, hv, w_old, hu_old, hv_old, BC,
 	                                      BX, BY, wet_blocks, active_blocks,
-	                                      pitch, pitchBX, pitchBY, h, t_wet);
+	                                      pitch, pitchBX, pitchBY, h, t_wet, G);
 }
 
 __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
                                 double *dhu, double *dhv, double *mx, double *BC,
-                                double *BX, double *BY, int *active_blocks,
+                                double *BX, double *BY, double *G, int *active_blocks,
                                 double dt, size_t pitch, size_t pitchBX,
                                 size_t pitchBY, double *n, double hydrograph_rate,
                                 int hydrograph_source, double hyetograph_rate,
@@ -473,6 +478,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	double *dhu_ij = getElement(dhu, pitch, j, i);
 	double *dhv_ij = getElement(dhv, pitch, j, i);
 	double *BC_ij  = getElement(BC,  pitch, j, i);
+	double *G_ij   = getElement(G,   pitch, j, i);
 
 	// Fill the inner shared memory cells
 	sw [tidy+2][tidx+2] = *w_ij;
@@ -620,6 +626,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 		double C = -4.f*g*(*n_ij)*(*n_ij)*sqrtf((*hu_ij)*(*hu_ij) +
 											   (*hv_ij)*(*hv_ij)) *
 				  powf(hC, 5.f/3.f) / powf((hC*hC + fmaxf(hC*hC, kappa)), 2.f);
+		*G_ij = C;
 
 		S1 += C * (*hu_ij);
 		S2 += C * (*hv_ij);
@@ -690,12 +697,12 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 
 void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
                    double *dhv, double *mx, double *BC, double *BX, double *BY,
-                   int *active_blocks, double dt, double *n,
+                   double *G, int *active_blocks, double dt, double *n,
                    double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate, double *hyetograph_gridded_rate,
                    double *F, double *F_old, double *dF, double *K, int *source_idx_dev, double *source_rate_dev, long numSources) {
     ComputeFluxes_k <<< nBlocks, BlockDim >>> (w, hu, hv, dw, dhu, dhv, mx, BC,
-	                                           BX, BY, active_blocks, dt, pitch,
+	                                           BX, BY, G, active_blocks, dt, pitch,
 	                                           pitchBX, pitchBY, n,
 	                                           hydrograph_rate,
 	                                           hydrograph_source,
@@ -707,7 +714,7 @@ void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
 __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
                               double *hu_old, double *hv_old, double *dw,
                               double *dhu, double *dhv, double *BC,
-                              bool *wet_blocks, int *active_blocks,
+                              double *G, bool *wet_blocks, int *active_blocks,
                               double t, double dt, size_t pitch,
                               double hydrograph_rate, int hydrograph_source,
                               double hyetograph_rate,
@@ -736,6 +743,7 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 	double *dhu_ij    = getElement(dhu,    pitch, j, i);
 	double *dhv_ij    = getElement(dhv,    pitch, j, i);
 	double *BC_ij     = getElement(BC,     pitch, j, i);
+	double *G_ij      = getElement(G,      pitch, j, i);
 
 	*w_old_ij  = *w_ij;
 	*hu_old_ij = *hu_ij;
@@ -853,13 +861,13 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 
 void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_old,
                  double *hv_old, double *dw, double *dhu, double *dhv, double *BC,
-                 bool *wet_blocks, int *active_blocks, double t, double dt,
+                 double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
                  double *F, double *F_old, double *dF, double *K, double *h,
                  double *q, double *h_max, double *q_max, double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources, double *t_peak, double *t_dry) {	//added time_peak and time_dry by Youcan on 20170908
     Integrate_1_k <<< nBlocks, BlockDim >>> (w, hu, hv, w_old, hu_old, hv_old,
-	                                         dw, dhu, dhv, BC, wet_blocks,
+	                                         dw, dhu, dhv, BC, G, wet_blocks,
 	                                         active_blocks, t, dt, pitch,
 	                                         hydrograph_rate, hydrograph_source,
 	                                         hyetograph_rate,
@@ -870,7 +878,7 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
 __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
                               double *hu_old, double *hv_old, double *dw,
                               double *dhu, double *dhv, double *BC,
-                              bool *wet_blocks, int *active_blocks,
+                              double *G, bool *wet_blocks, int *active_blocks,
                               double t, double dt, size_t pitch,
                               double hydrograph_rate, int hydrograph_source,
                               double hyetograph_rate,
@@ -902,6 +910,7 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
 	double *dhu_ij    = getElement(dhu,    pitch, j, i);
 	double *dhv_ij    = getElement(dhv,    pitch, j, i);
 	double *BC_ij     = getElement(BC,     pitch, j, i);
+	double *G_ij      = getElement(G,      pitch, j, i);
 
 	*w_ij  = 0.5f*((*w_old_ij)  + (*w_ij)  + (*dw_ij) *dt);
 	*hu_ij = 0.5f*((*hu_old_ij) + (*hu_ij) + (*dhu_ij)*dt);
@@ -1002,14 +1011,14 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
 }
 
 void Integrate_2(double *w, double *hu, double *hv, double *w_old, double *hu_old,
-                 double *hv_old, double *dw, double *dhu, double *dhv, double *BC,
-                 bool *wet_blocks, int *active_blocks, double t, double dt,
+                 double *hv_old, double *dw, double *dhu, double *dhv, double *BC, 
+                 double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
                  double *F, double *F_old, double *dF, double *K, double *h,
                  double *q, double *h_max, double *q_max, double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources) {
     Integrate_2_k <<< nBlocks, BlockDim >>> (w, hu, hv, w_old, hu_old, hv_old,
-	                                         dw, dhu, dhv, BC, wet_blocks,
+	                                         dw, dhu, dhv, BC, G, wet_blocks,
 	                                         active_blocks, t, dt, pitch,
 	                                         hydrograph_rate, hydrograph_source,
 	                                         hyetograph_rate,
@@ -1210,7 +1219,8 @@ void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_
               double *&BC, double *&BX, double *&BY, bool *&wet_blocks,
               int *&active_blocks, double *&n, double *&hyetograph_gridded_rate,
               double *&F, double *&F_old, double *&dF, double *&K, double *&h,
-              double *&q, double *&h_max, double *&q_max, double *&t_wet, double *&t_peak, double *&t_dry) {	//added t_peak and t_dry by Youcan on 20170908
+              double *&q, double *&h_max, double *&q_max, double *&t_wet, double *&t_peak, 
+		      double *&t_dry, double *&G) {	//added t_peak and t_dry by Youcan on 20170908
     cudaFree(w);
     cudaFree(hu);
     cudaFree(hv);
@@ -1220,6 +1230,7 @@ void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_
     cudaFree(dw);
     cudaFree(dhu);
     cudaFree(dhv);
+    cudaFree(G);
     cudaFree(BC);
     cudaFree(BX);
     cudaFree(BY);
