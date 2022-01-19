@@ -628,8 +628,8 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 				  powf(hC, 5.f/3.f) / powf((hC*hC + fmaxf(hC*hC, kappa)), 2.f);
 		*G_ij = C;
 
-		S1 += C * (*hu_ij);
-		S2 += C * (*hv_ij);
+		// S1 += C * (*hu_ij);
+		// S2 += C * (*hv_ij);
 	}
 
     double S0 = 0.f;
@@ -751,7 +751,9 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 
     *w_ij  += (*dw_ij)  * dt;
     *hu_ij += (*dhu_ij) * dt;
+    *hu_ij /= (1.0f - dt*(*G_ij));
     *hv_ij += (*dhv_ij) * dt;
+    *hv_ij /= (1.0f - dt*(*G_ij));
 
 	double hC = ((*w_ij)-(*BC_ij) > epsilon) ? *w_ij - *BC_ij : 0.f;
 	*w_ij = (hC > epsilon) ? *w_ij : *BC_ij;
