@@ -73,6 +73,18 @@ void Simulator::ReadUserParams(std::string config_file) {
     		}
     }
 
+    courant_max = 0.25;
+    if (cfg.keyExists("courant_limit")) {
+        courant_max = cfg.getValueOfKey<double>("courant_limit");
+        if (courant_max <=0 || courant_max >= 1.0) {
+            std::cerr << "Specifed Courant_limit ("
+                      << courant_max << ") "
+                      << "is out of range, reverting to default"
+                      << std::endl;
+            courant_max = 0.25;
+        }
+    }
+    std::cout << "Courant limit = " << courant_max << std::endl;
     
 	if (cfg.keyExists("K")) {
 		infiltration = true;
@@ -425,9 +437,14 @@ void Simulator::ComputeTimestep() {
 
     double max_x = mxresptr[0];
 
-    double c_x = h_dx / fmaxf(4.f*max_x, kappa);
-    dt = fminf(c_x, h_dx/10.f);
+    double c_x = h_dx / fmaxf(max_x/courant_max, kappa);
 
+    // WAP: This seems like a very arbitrary (and rather small)
+    // maximum limit on time step.  I cannot identify a source for
+    // it. What does this add over the use of 'kappa' above). Does
+    // kappa need to be an input parameter again?
+    dt = fminf(c_x, h_dx/10.f);
+    
 	dt = (t == 0.f) ? dt = 0.000001f : dt;	
 	t += dt;
     // std::cout << "max_x = " << max_x

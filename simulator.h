@@ -18,6 +18,7 @@ public:
 	double tf; // final time (s) (defined by user)
 	double t;  // instantaneous time (s)
 	double dt; // timestep (s)
+        double courant_max; // Courant limit
 
 	// Integration settings
 	bool euler_integration; // specifies if Euler integration is used
