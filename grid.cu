@@ -469,7 +469,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 
 
     // Don't go outside allocated arrays
-    if (i >= nBlocksX*BLOCK_COLS || j >= nBlocksY*BLOCK_ROWS) return;
+    // if (i >= nBlocksX*BLOCK_COLS || j >= nBlocksY*BLOCK_ROWS) return;
 
 	double *w_ij   = getElement(w,   pitch, j, i);
 	double *hu_ij  = getElement(hu,  pitch, j, i);
