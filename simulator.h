@@ -6,6 +6,8 @@
 #include <sys/time.h>
 //#include <time.h>		// for windows, Youcan
 #include "source.h"
+#include "grid.h"
+#include "io.h"
 
 class Simulator {
 
@@ -107,6 +109,26 @@ public:
 
 	void   StartTimer(void); // starts simulation timer
 	double EndTimer(void);   // ends simulation timer
+
+	// Variables (moving here - previous global variables)
+	// Define host arrays
+	double *h_o, *n_o, *K_o, *hyetograph_o;
+	double *b, *h_BX, *h_BY, *h_hyetograph, *h_n, *h_F, *h_K, *h_q, *h_h, *h_h_max,
+      *h_q_max, *h_t_wet;
+	
+	Grid *B;
+
+	// Define device arrays
+	double *dev_w, *dev_hu, *dev_hv, *dev_w_old, *dev_hu_old, *dev_hv_old, *dev_dw, *dev_dhu, *dev_dhv, *dev_mx, *dev_BC, *dev_BX,
+      		*dev_BY, *dev_n, *dev_hyetograph_gridded_rate, *dev_F, *dev_F_old, *dev_dF, *dev_K, *dev_h, *dev_q, *dev_h_max,
+			*dev_q_max, *dev_t_wet, *dev_G, *dev_time_peak, *dev_time_dry;
+	bool *dev_wet_blocks;
+	int *dev_active_blocks;
+	int dev_wet_count;
+
+	
+	// Grid *B; // grid in device ..
+	GridConfig grid_config;
 };
 
 #endif

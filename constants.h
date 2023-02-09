@@ -3,6 +3,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include "io.h"
 
 const double  h_epsilon = 1.19209e-07f;
 const double pi        = 3.14159265358979324;

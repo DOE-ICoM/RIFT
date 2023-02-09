@@ -10,19 +10,16 @@
 #include "constants.h"
 #include "io.h"
 
-typedef std::numeric_limits<double> dbl;
-typedef std::numeric_limits<double>  flt;
+// int    b_nx,  b_ny;
+// double b_xll, b_yll;
+// double cellsize_original;
+// double nodata;
 
-int    b_nx,  b_ny;
-double b_xll, b_yll;
-double cellsize_original;
-double nodata;
+// int h_nx, h_ny;
+// double h_xll, h_yll;
+// double cellsize;
 
-int h_nx, h_ny;
-double h_xll, h_yll;
-double cellsize;
-
-double h_dx, h_dy;
+// double h_dx, h_dy;
 
 /* 
    Blatently plagerized from 
@@ -67,6 +64,7 @@ static void ComputeCellSize(const int &nx, const int &ny,
     dy = domain_height_m/ny*1000.0;
 }
 
+// depth of water - oceans, seas or lakes
 void InitBathymetry(double *&b, std::string filename, const bool& square_cells) {
 
     double minimum = 9999.f;
@@ -85,37 +83,45 @@ void InitBathymetry(double *&b, std::string filename, const bool& square_cells) 
     try {
         std::string dummy; // used to read in preceding words (e.g., ncols, nrows)
         ifs >> dummy;
-        ifs >> b_nx; line++;
+        ifs >> grid_config.b_nx; line++;
+        // grid_config.b_nx = b_nx;
 	
         ifs >> dummy; 
-        ifs >> b_ny; line++;
+        ifs >> grid_config.b_ny; line++;
+        // grid_config.b_ny = b_ny;
 
         ifs >> dummy;
-        ifs >> b_xll; line++;
+        ifs >> grid_config.b_xll; line++;
+        // grid_config.b_xll = b_xll;
 
         ifs >> dummy;
-        ifs >> b_yll; line++;
+        ifs >> grid_config.b_yll; line++;
+        // grid_config.b_yll = b_yll;
     
         ifs >> dummy;
-        ifs >> cellsize_original; line++;
+        ifs >> grid_config.cellsize_original; line++;
+        // grid_config.cellsize_original = cellsize_original;
     
         double nodata;
         ifs >> dummy;
-        ifs >> nodata; line++;
+        ifs >> grid_config.nodata; line++;
+        // grid_config.nodata = nodata;
 
         // This array holds the bathymetry points defined by the input DEM 
-        b = (double *)malloc(b_nx * b_ny * sizeof(double ));
+        b = (double *)malloc(grid_config.b_nx * grid_config.b_ny * sizeof(double ));
 
-        h_xll = b_xll + cellsize_original/2.0;
-        h_yll = b_yll + cellsize_original/2.0;
+        grid_config.h_xll = grid_config.b_xll + grid_config.cellsize_original/2.0;
+        grid_config.h_yll = grid_config.b_yll + grid_config.cellsize_original/2.0;
+        // grid_config.h_xll = h_xll;
+        // grid_config.h_yll = h_yll;
 
         double value;
         // Gridded data must be read in a "flipped" fashion
-        for (int j = b_ny - 1; j >= 0; j--, line++) {
-            for (int i = 0; i < b_nx; i++) {
-                int id = j*b_nx + i;
+        for (int j = grid_config.b_ny - 1; j >= 0; j--, line++) {
+            for (int i = 0; i < grid_config.b_nx; i++) {
+                int id = j*grid_config.b_nx + i;
                 ifs >> value;
-                if (value == nodata) {
+                if (value == grid_config.nodata) {
                     printf("There are NODATA values present in the DEM. Exiting.\n");
                     exit(1);
                 } else {
@@ -133,32 +139,38 @@ void InitBathymetry(double *&b, std::string filename, const bool& square_cells) 
     }
         
 #pragma omp parallel for
-    for (int j = b_ny - 1; j >= 0; j--) {
-        for (int i = 0; i < b_nx; i++) {
-            int id = j*b_nx + i;
+    for (int j = grid_config.b_ny - 1; j >= 0; j--) {
+        for (int i = 0; i < grid_config.b_nx; i++) {
+            int id = j*grid_config.b_nx + i;
             b[id] -= minimum;
         }
     }
 
-    cellsize =        cellsize_original*6378137.0*       pi / 180.0;
+    grid_config.cellsize = grid_config.cellsize_original*6378137.0*pi / 180.0;
     if (square_cells) {
-        // Convert cellsize from degrees to meters and set dx, dy
-        h_dx     = (double )cellsize_original*6378137.f*(double )pi / 180.f;
-        h_dy     = (double )cellsize_original*6378137.f*(double )pi / 180.f;    
+      // Convert cellsize from degrees to meters and set dx, dy
+      grid_config.h_dx = (double )grid_config.cellsize_original*6378137.f*(double )pi / 180.f;
+      grid_config.h_dy = (double )grid_config.cellsize_original*6378137.f*(double )pi / 180.f;    
     } else {
-        ComputeCellSize(b_nx, b_ny, h_xll, h_yll, cellsize_original, h_dx, h_dy);
+      ComputeCellSize(grid_config.b_nx, grid_config.b_ny,
+                      grid_config.h_xll, grid_config.h_yll,
+                      grid_config.cellsize_original,
+                      grid_config.h_dx, grid_config.h_dy);
     }
 
-    h_nx = b_nx + 4 - 1;
-    h_ny = b_ny + 4 - 1;
+    grid_config.h_nx = grid_config.b_nx + 4 - 1;
+    grid_config.h_ny = grid_config.b_ny + 4 - 1;
 
     std::cout << "Computed Cell Sizes: " << std::endl;
-    std::cout << "\tOriginal (deg): " << cellsize_original << std::endl;
-    std::cout << "\tOriginal (m): " << cellsize << std::endl;
-    std::cout << "\tInternal (m): " << h_dx << ", " << h_dy << std::endl;
+    std::cout << "\tOriginal (deg): " << grid_config.cellsize_original << std::endl;
+    std::cout << "\tOriginal (m): " << grid_config.cellsize << std::endl;
+    std::cout << "\tInternal (m): "
+              << grid_config.h_dx << ", "
+              << grid_config.h_dy << std::endl;
+
 }
 
-void ReadOriginalGrid(double *&G_original, std::string filename) {
+void ReadOriginalGrid(double *&G_original, std::string filename, GridConfig& grid_config) {
     std::ifstream ifs;
     std::string dummy; // used to read in preceding words (e.g., ncols, nrows)
 	double      junk;
@@ -182,11 +194,11 @@ void ReadOriginalGrid(double *&G_original, std::string filename) {
         ifs >> dummy;
         ifs >> nrows; line++;
 
-        if (b_ny != nrows || b_nx != ncols) {
+        if (grid_config.b_ny != nrows || grid_config.b_nx != ncols) {
             std::ostringstream msg;
             msg << filename << ": incorrect size: "
                 << " got (" << nrows << "x" << ncols << ")"
-                << " expected (" << b_ny << "x" << b_nx << ")";
+                << " expected (" << grid_config.b_ny << "x" << grid_config.b_nx << ")";
             throw std::runtime_error(msg.str());
         }
 
@@ -204,13 +216,13 @@ void ReadOriginalGrid(double *&G_original, std::string filename) {
         ifs >> nodata; line++;
 
         // This array holds the bathymetry points defined by the input DEM 
-        G_original = (double *)malloc(b_nx * b_ny * sizeof(double ));
+        G_original = (double *)malloc(grid_config.b_nx * grid_config.b_ny * sizeof(double ));
 	
         double value;
         // Gridded data must be read in a "flipped" fashion
-        for (int j = b_ny - 1; j >= 0; j--, line++) {
-            for (int i = 0; i < b_nx; i++) {
-                int id = j*b_nx + i;
+        for (int j = grid_config.b_ny - 1; j >= 0; j--, line++) {
+            for (int i = 0; i < grid_config.b_nx; i++) {
+                int id = j*grid_config.b_nx + i;
                 ifs >> value;
                 if (value == nodata) {
                     printf("There are NODATA values present in the DEM. Exiting.\n");
@@ -305,7 +317,7 @@ Grid *CreateGrid(int num_columns, int num_rows, double xll, double yll,
 	return G;
 }
 
-void SetOriginalGrid(double *G_original, std::string filename) {
+void SetOriginalGrid(double *G_original, std::string filename, GridConfig& grid_config) {
     std::ifstream ifs;
 	
     ifs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -328,11 +340,11 @@ void SetOriginalGrid(double *G_original, std::string filename) {
         ifs >> dummy;
         ifs >> nrows; line++;
 
-        if (b_ny != nrows || b_nx != ncols) {
+        if (grid_config.b_ny != nrows || grid_config.b_nx != ncols) {
             std::ostringstream msg;
             msg << filename << ": incorrect size: "
                 << " got (" << nrows << "x" << ncols << ")"
-                << " expected (" << b_ny << "x" << b_nx << ")";
+                << " expected (" << grid_config.b_ny << "x" << grid_config.b_nx << ")";
             throw std::runtime_error(msg.str());
         }
 
@@ -348,14 +360,15 @@ void SetOriginalGrid(double *G_original, std::string filename) {
         ifs >> dummy;
         double nodata;
         ifs >> nodata; line++;
+        grid_config.nodata = nodata;
 
         double value;
         // Gridded data must be read in a "flipped" fashion
-        for (int j = b_ny - 1; j >= 0; j--, line++) {
-            for (int i = 0; i < b_nx; i++) {
-                int id = j*b_nx + i;
+        for (int j = grid_config.b_ny - 1; j >= 0; j--, line++) {
+            for (int i = 0; i < grid_config.b_nx; i++) {
+                int id = j*grid_config.b_nx + i;
                 ifs >> value;
-                if (value == nodata) {
+                if (value == grid_config.nodata) {
                     printf("There are NODATA values present in the DEM. Exiting.\n");
                     exit(1);
                 } else {

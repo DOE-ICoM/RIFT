@@ -1,7 +1,7 @@
 #ifndef GRID_H
 #define GRID_H
-
-#include "simulator.h"
+#include "io.h"
+// #include "simulator.h"
 
 void SetDeviceConstants(int num_columns, int num_rows,
                         double cellxsize, double cellysize, double h_kappa);
@@ -17,7 +17,8 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
                   bool h_q_print, bool h_save_max, bool h_save_arrival_time,
-                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G);	//added time_peak and time_dry by Youcan on 20170908
+                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G, 
+                  GridConfig& grid_config);	//added time_peak and time_dry by Youcan on 20170908
 
 void InitGrid(double *w, double *hu, double *hv, double *w_old, double *hu_old,
               double *hv_old, double *BC, double *BX, double *BY, bool *wet_blocks,

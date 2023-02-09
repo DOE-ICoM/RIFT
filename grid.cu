@@ -246,7 +246,8 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
                   bool h_q_print, bool h_save_max, bool h_save_arrival_time,
-                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G) {	//added time_peak and time_dry by Youcan on 20170908
+                  double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G
+				  , GridConfig& grid_config) {	//added time_peak and time_dry by Youcan on 20170908
 //10000196001000
 //100000001000
 
@@ -355,8 +356,8 @@ std::endl;
 	}
 
 	BlockDimX.x = 48, BlockDimY.x = 48;
-    GridDimX.x  = ceil((double)h_ny / (double)BlockDimX.x);
-    GridDimY.x  = ceil((double)h_nx / (double)BlockDimY.x);
+    GridDimX.x  = ceil((double)grid_config.h_ny / (double)BlockDimX.x);
+    GridDimY.x  = ceil((double)grid_config.h_nx / (double)BlockDimY.x);
 
     GrowGrid.x = ceil((double)GridDim.x / (double)BlockDim.x);
     GrowGrid.y = ceil((double)GridDim.y / (double)BlockDim.y);

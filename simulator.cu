@@ -19,20 +19,8 @@
 #include "grid.h"
 #include "io.h"
 
-// Define device arrays
-double *w, *hu, *hv, *w_old, *hu_old, *hv_old, *dw, *dhu, *dhv, *mx, *my, *BC, *BX,
-      *BY, *n, *hyetograph_gridded_rate, *F, *F_old, *dF, *K, *h, *q, *h_max,
-	*q_max, *t_wet, *time_peak, *time_dry, *G;									//added time_peak and time_dry by Youcan on 20170908
-bool *wet_blocks;
-int *active_blocks;
-int wet_count;
-
-Grid *B;
-
-// Define host arrays
-double *h_o, *n_o, *K_o, *hyetograph_o;
-double *b, *h_BX, *h_BY, *h_hyetograph, *h_n, *h_F, *h_K, *h_q, *h_h, *h_h_max,
-      *h_q_max, *h_t_wet;
+typedef std::numeric_limits<double> dbl;
+typedef std::numeric_limits<double> flt;
 
 void Simulator::ReadUserParams(std::string config_file) {
 	ConfigFile cfg(config_file.c_str()); // save the user-defined parameter file
@@ -207,19 +195,19 @@ void Simulator::InitSimulation(void) {
 	volume_old = 0;
 
     // Load the user-defined bathymetry
-    InitBathymetry(b, DEM_file, square_cells);
+    InitBathymetry(b, DEM_file, this->grid_config);
 	B = ReadGrid(DEM_file);
 
 	//if (cfg.keyExists("kappa")) {
 	//	h_kappa = cfg.getValueOfKey<double>("kappa");
 	//} else {
 		// Set the desingularization constant (recommendation of user)
-		kappa = sqrtf(0.01f*fmaxf(1.f, fminf(h_dx, h_dy)));
+		kappa = sqrtf(0.01f*fmaxf(1.f, fminf(grid_config.h_dx, grid_config.h_dy)));
 	//}
 
 	if (h_init || h_print) {
-		h_h = (double*)malloc(h_nx*h_ny*sizeof(double));
-		memset(h_h, 0, h_nx*h_ny*sizeof(double));
+		h_h = (double*)malloc(grid_config.h_nx * grid_config.h_ny * sizeof(double));
+		memset(h_h, 0, grid_config.h_nx * grid_config.h_ny * sizeof(double));
 		if (h_init) {
 			h_o  = (double*)malloc(b_nx*b_ny*sizeof(double));
 			SetOriginalGrid(h_o, h_file);
@@ -227,8 +215,8 @@ void Simulator::InitSimulation(void) {
 	}
 
 	if (rainfall_gridded) {
-		h_hyetograph = (double*)malloc(h_nx*h_ny*sizeof(double));
-		memset(h_hyetograph, 0, h_nx*h_ny*sizeof(double));
+		h_hyetograph = (double*)malloc(grid_config.h_nx * grid_config.h_ny * sizeof(double));
+		memset(h_hyetograph, 0, grid_config.h_nx * grid_config.h_ny * sizeof(double));
 
 		std::stringstream hyetograph_file_ss;
 		std::string hyetograph_file;
@@ -245,8 +233,8 @@ void Simulator::InitSimulation(void) {
 		SetOriginalGrid(hyetograph_o, hyetograph_file);
 	}
 	
-    h_n = (double*)malloc(h_nx*h_ny*sizeof(double));
-    memset(h_n, 0, h_nx*h_ny*sizeof(double));
+    h_n = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
+    memset(h_n, 0, grid_config.h_nx*grid_config.h_ny*sizeof(double));
     if (n_gridded) {
         n_o = (double*)malloc(b_nx*b_ny*sizeof(double));
 		SetOriginalGrid(n_o, n_file);
@@ -272,39 +260,40 @@ void Simulator::InitSimulation(void) {
 			}
 	}
 
-	
-
-    SetDeviceConstants(h_nx, h_ny, h_dx, h_dy, kappa);
+	SetDeviceConstants(B->num_columns, B->num_rows, B->cellsize, kappa);
 
 
-	AllocateGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, my, BC, BX, BY,
-                 wet_blocks, active_blocks, n, hyetograph_gridded_rate, F,
-                 F_old, dF, K, h, q, h_max, q_max, t_wet, dambreak,
+	AllocateGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, 
+				 dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY,
+                 dev_wet_blocks, dev_active_blocks, dev_n, 
+				 dev_hyetograph_gridded_rate, dev_F, dev_F_old, dev_dF, dev_K,
+				 dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dambreak,
 	             rainfall_averaged, rainfall_gridded, infiltration, 
-	             euler_integration, check_volume, h_init, h_print, q_print,
-	             save_max, save_arrival_time, psi, dtheta, time_peak, time_dry, G);	//added time_peak and time_dry by Youcan on 20170908
+				 euler_integration, check_volume, h_init, h_print, q_print,
+	             save_max, save_arrival_time, psi, dtheta, dev_time_peak, 
+				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
 
 
 
-    h_BX = (double*)malloc(h_ny*(h_nx+1)*sizeof(double));
-    h_BY = (double*)malloc((h_ny+1)*h_nx*sizeof(double));
-    memset(h_BX, 0, h_ny*(h_nx+1)*sizeof(double));
-    memset(h_BY, 0, (h_ny+1)*h_nx*sizeof(double));
+    h_BX = (double*)malloc(grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
+    h_BY = (double*)malloc((grid_config.h_ny+1)*grid_config.h_nx*sizeof(double));
+    memset(h_BX, 0, grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
+    memset(h_BY, 0, (grid_config.h_ny+1)*grid_config.h_nx*sizeof(double));
 
     // Interpolate gridded interfacial points
-    for (int j = 2; j < h_ny - 2; j++) {
-        for (int i = 2; i < h_nx - 2; i++) {
+    for (int j = 2; j < grid_config.h_ny - 2; j++) {
+        for (int i = 2; i < grid_config.h_nx - 2; i++) {
             int jt = j - 2, it = i - 2;
 
-            int bed = j     * (h_nx+1) + i+1;
-            int bwd = j     * (h_nx+1) + i;
-            int bnd = (j+1) * (h_nx)   + i;
-            int bsd = j     * (h_nx)   + i;
+            int bed = j     * (grid_config.h_nx+1) + i+1;
+            int bwd = j     * (grid_config.h_nx+1) + i;
+            int bnd = (j+1) * (grid_config.h_nx)   + i;
+            int bsd = j     * (grid_config.h_nx)   + i;
 
-            int ll = jt     * b_nx + it;     // lower-left bathymetry point
-            int ul = (jt+1) * b_nx + it;     // upper-left bathymetry point
-            int ur = (jt+1) * b_nx + (it+1); // upper-right bathymetry point
-            int lr = jt     * b_nx + (it+1); // lower-right bathymetry point
+            int ll = jt     * grid_config.b_nx + it;     // lower-left bathymetry point
+            int ul = (jt+1) * grid_config.b_nx + it;     // upper-left bathymetry point
+            int ur = (jt+1) * grid_config.b_nx + (it+1); // upper-right bathymetry point
+            int lr = jt     * grid_config.b_nx + (it+1); // lower-right bathymetry point
 
             h_BX[bed] = 0.5f * (B->data[ur]+B->data[lr]);
 			h_BX[bwd] = 0.5f * (B->data[ll]+B->data[ul]);
@@ -312,76 +301,76 @@ void Simulator::InitSimulation(void) {
 			h_BY[bsd] = 0.5f * (B->data[ll]+B->data[lr]);
 
 			if (i == 2) {
-				h_BX[j*(h_nx+1)+(i-1)] = h_BX[bed];
-				h_BX[j*(h_nx+1)+(i-2)] = h_BX[bwd];
-			}  if (i == h_nx-3) {
-				h_BX[j*(h_nx+1)+(i+2)] = h_BX[bwd];
+				h_BX[j*(grid_config.h_nx+1)+(i-1)] = h_BX[bed];
+				h_BX[j*(grid_config.h_nx+1)+(i-2)] = h_BX[bwd];
+			}  if (i == grid_config.h_nx-3) {
+				h_BX[j*(grid_config.h_nx+1)+(i+2)] = h_BX[bwd];
 			}  if (j == 2) {
-				h_BY[(j-1)*h_nx+i] = h_BY[bnd];
-				h_BY[(j-2)*h_nx+i] = h_BY[bsd];
-			}  if (j == h_ny-3) {
-				h_BY[(j+2)*h_nx+i] = h_BY[bsd];
+				h_BY[(j-1)*grid_config.h_nx+i] = h_BY[bnd];
+				h_BY[(j-2)*grid_config.h_nx+i] = h_BY[bsd];
+			}  if (j == grid_config.h_ny-3) {
+				h_BY[(j+2)*grid_config.h_nx+i] = h_BY[bsd];
 			}
 
 			if (h_init) {
-				h_h[j*h_nx+i] = 0.25f * (h_o[ur]+h_o[lr]+h_o[ll]+h_o[ul]);
+				h_h[j*grid_config.h_nx+i] = 0.25f * (h_o[ur]+h_o[lr]+h_o[ll]+h_o[ul]);
 				
 			}
 
 			if (rainfall_gridded) {
-				h_hyetograph[j*h_nx+i] = 0.25f*(hyetograph_o[ur]+hyetograph_o[lr]+
+				h_hyetograph[j*grid_config.h_nx+i] = 0.25f*(hyetograph_o[ur]+hyetograph_o[lr]+
 												hyetograph_o[ll]+hyetograph_o[ul]);
-				h_hyetograph[j*h_nx+i] /= (3600.f*1000.f);
+				h_hyetograph[j*grid_config.h_nx+i] /= (3600.f*1000.f);
 			}
 
 			if (n_gridded) {
-				h_n[j*h_nx+i] = 0.25f * (n_o[ur]+n_o[lr]+n_o[ll]+n_o[ul]);
+				h_n[j*grid_config.h_nx+i] = 0.25f * (n_o[ur]+n_o[lr]+n_o[ll]+n_o[ul]);
 			}  else {
-                h_n[j*h_nx+i] = n_const;
+                h_n[j*grid_config.h_nx+i] = n_const;
             }
 
 			if (infiltration) {
-				h_K[j*h_nx+i] = 0.25f * (K_o[ur]+K_o[lr]+K_o[ll]+K_o[ul]);
-				h_K[j*h_nx+i] /= (3600.f*1000.f);
+				h_K[j*grid_config.h_nx+i] = 0.25f * (K_o[ur]+K_o[lr]+K_o[ll]+K_o[ul]);
+				h_K[j*grid_config.h_nx+i] /= (3600.f*1000.f);
 			}
         }
     }
 
-    checkCudaErrors(cudaMemcpy2D(BX, pitchBX, h_BX, (h_nx+1)*sizeof(double),
-                                 (h_nx+1)*sizeof(double), h_ny, HtoD));
-    checkCudaErrors(cudaMemcpy2D(BY, pitchBY, h_BY, h_nx*sizeof(double),
-                                 h_nx*sizeof(double), (h_ny+1), HtoD));
+    checkCudaErrors(cudaMemcpy2D(dev_BX, pitchBX, h_BX, (grid_config.h_nx+1)*sizeof(double),
+                                 (grid_config.h_nx+1)*sizeof(double), grid_config.h_ny, HtoD));
+    checkCudaErrors(cudaMemcpy2D(dev_BY, pitchBY, h_BY, grid_config.h_nx*sizeof(double),
+                                 grid_config.h_nx*sizeof(double), (grid_config.h_ny+1), HtoD));
 
 	if (h_init) {
 		std::cout << "Copying initial Grid to Device" << std::endl;
-		checkCudaErrors(cudaMemcpy2D(h, pitch, h_h, h_nx*sizeof(double),
-									 h_nx*sizeof(double), h_ny, HtoD));
+		checkCudaErrors(cudaMemcpy2D(dev_h, pitch, h_h, grid_config.h_nx*sizeof(double),
+									 grid_config.h_nx*sizeof(double), grid_config.h_ny, HtoD));
 	}
 
 	if (rainfall_gridded) {
-		checkCudaErrors(cudaMemcpy2D(hyetograph_gridded_rate, pitch, h_hyetograph,
-									 h_nx*sizeof(double), h_nx*sizeof(double), h_ny,
+		checkCudaErrors(cudaMemcpy2D(dev_hyetograph_gridded_rate, pitch, h_hyetograph,
+									 grid_config.h_nx*sizeof(double), grid_config.h_nx*sizeof(double), grid_config.h_ny,
 									 HtoD));
 	}
 
-    checkCudaErrors(cudaMemcpy2D(n, pitch, h_n, h_nx*sizeof(double),
-                                 h_nx*sizeof(double), h_ny, HtoD));
+    checkCudaErrors(cudaMemcpy2D(dev_n, pitch, h_n, grid_config.h_nx*sizeof(double),
+                                 grid_config.h_nx*sizeof(double), grid_config.h_ny, HtoD));
 
 	if (infiltration) {
-		checkCudaErrors(cudaMemcpy2D(K, pitch, h_K, h_nx*sizeof(double),
-									 h_nx*sizeof(double), h_ny, HtoD));
+		checkCudaErrors(cudaMemcpy2D(dev_K, pitch, h_K, grid_config.h_nx*sizeof(double),
+									 grid_config.h_nx*sizeof(double), grid_config.h_ny, HtoD));
 	}
 
 	if (q_print) {
-		h_q  = (double*)malloc(h_nx*h_ny*sizeof(double));
+		h_q  = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
 	}
 
 	if (check_volume && infiltration) {
-		h_F = (double*)malloc(h_nx*h_ny*sizeof(double));
+		h_F = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
 	}
 
-	InitGrid(w, hu, hv, w_old, hu_old, hv_old, BC, BX, BY, wet_blocks,
-	         active_blocks, h, t_wet, G);
+	InitGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_BC, dev_BX, dev_BY, dev_wet_blocks,
+	         dev_active_blocks, dev_h, dev_t_wet, dev_G);
 }
 
 void Simulator::StartTimer() {
@@ -419,7 +408,7 @@ void Simulator::UpdateSource(void) {
 
 		if (check_volume) {
 			V_added += hyetograph.interpolated_rate * dt *
-					   (double)((h_nx-4) * (h_ny-4));
+					   (double)((grid_config.h_nx-4) * (grid_config.h_ny-4));
 		}
 	}
 
@@ -459,18 +448,23 @@ void Simulator::ComputeTimestep() {
 	// std::cout << "time step is " << dt << std::endl; 
 }
 
+// TODO: Should be part of Simulator class?
+void writeHeader(std::ofstream &thefile, GridConfig& grid_config) {
+    thefile.precision(dbl::digits10);
+	thefile << "ncols         " << grid_config.h_nx - 4          << std::endl;
+	thefile << "nrows         " << grid_config.h_ny - 4          << std::endl;
+	thefile << "xllcorner     " << grid_config.h_xll             << std::endl;
+	thefile << "yllcorner     " << grid_config.h_yll             << std::endl;
+	thefile << "cellsize      " << grid_config.cellsize_original << std::endl;
+	thefile << "NODATA_value  " << -9999             << std::endl;
+    thefile.precision(flt::digits10);
+}
 
 void Simulator::PrintData(void) {
-	wet_count = 0;
+	dev_wet_count = 0;
 	if (h_print || check_volume) {
-		checkCudaErrors(cudaMemcpy2D(h_h, h_nx*sizeof(double), h, pitch,
-									 h_nx*sizeof(double), h_ny, DtoH));
-        for (int j = h_ny - 3; j >= 2; j--) {
-            for (int i = 2; i < h_nx-2; i++) {
-                int   id = j*h_nx + i;
-                if (h_h[id] > 0.0) wet_count++;
-            }
-        }
+		checkCudaErrors(cudaMemcpy2D(h_h, grid_config.h_nx*sizeof(double), dev_h, pitch,
+									 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
 	}
 	if (save_max) {
 		PrintSummaryData();
@@ -486,8 +480,8 @@ void Simulator::PrintData(void) {
 		V_computed = 0.f;
 
 		if (infiltration) {
-			checkCudaErrors(cudaMemcpy2D(h_F, h_nx*sizeof(double), F, pitch,
-										 h_nx*sizeof(double), h_ny, DtoH));
+			checkCudaErrors(cudaMemcpy2D(h_F, grid_config.h_nx*sizeof(double), dev_F, pitch,
+										 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
 		}
 	}
 
@@ -495,9 +489,9 @@ void Simulator::PrintData(void) {
 		
 		#pragma omp parallel for reduction(+:V_computed)
 		
-		for (int j = h_ny - 3; j >= 2; j--) {
-			for (int i = 2; i < h_nx-2; i++) {
-				int   id       = j*h_nx + i;
+		for (int j = grid_config.h_ny - 3; j >= 2; j--) {
+			for (int i = 2; i < grid_config.h_nx-2; i++) {
+				int   id       = j*grid_config.h_nx + i;
 				V_computed += h_h[id];
 				if (infiltration) {
 					V_computed += h_F[id];
@@ -513,8 +507,8 @@ void Simulator::PrintData(void) {
 	}
 
 	if (q_print) {
-		checkCudaErrors(cudaMemcpy2D(h_q, h_nx*sizeof(double), q, pitch,
-									 h_nx*sizeof(double), h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(h_q, grid_config.h_nx*sizeof(double), dev_q, pitch,
+									 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
 		std::stringstream filename_q;
 		filename_q << output_file << "/q" << count_print << ".txt";
         writeGrid(filename_q.str(), h_q, h_nx, h_ny);
@@ -600,7 +594,7 @@ std::cout<<"inside the opend simulation" << std::endl;
 	std::cout<< "read the user parameters" <<std::endl;
     InitSimulation();
 	std::cout<< "initialized the simulation" << std::endl;
-    ApplyBoundaries(w, hu, hv, BC);
+    ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);
 	count = 0;
  StartTimer();
 
@@ -610,9 +604,9 @@ void Simulator::CloseSimulation(){
 		PrintSummaryData();
 	}
 
-	FreeGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, my, BC, BX, BY,
-	         wet_blocks, active_blocks, n, hyetograph_gridded_rate, F, F_old,
-             dF, K, h, q, h_max, q_max, t_wet, time_peak, time_dry, G);		//added t_peak and t_dry by Youcan on 20170908
+	FreeGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY,
+	         dev_wet_blocks, dev_active_blocks, dev_n, dev_hyetograph_gridded_rate, dev_F, dev_F_old,
+             dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dev_time_peak, dev_time_dry, dev_G);		//added t_peak and t_dry by Youcan on 20170908
 
     free(b);
     free(h_BX);
@@ -652,40 +646,40 @@ double Simulator::RunSimulation() {
 			UpdateSource();
 		}
 		//std::cout << "Grow Blocks" << std::endl; 
-		Grow(wet_blocks, active_blocks, hyetograph_gridded_rate, rainfall_gridded);
+		Grow(dev_wet_blocks, dev_active_blocks, dev_hyetograph_gridded_rate, rainfall_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
-        ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, my, BC, BX, BY, G, active_blocks,
-		              dt, n, hydrograph.interpolated_rate, dambreak_source_idx,
-		              hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
-					  F_old, dF, K,source_idx_dev,source_rate_dev,NumSources);
+        ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
+		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
+		              hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
+					  dev_F_old, dev_dF, dev_K,source_idx_dev,source_rate_dev,NumSources);
 		ComputeTimestep();
 
-		Integrate_1(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, BC,
-					G, wet_blocks, active_blocks, t, dt,
+		Integrate_1(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
+					dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
                     hydrograph.interpolated_rate, dambreak_source_idx,
-                    hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
-                    F_old, dF, K, h, q, h_max, q_max, t_wet,source_idx_dev, source_rate_dev,NumSources, time_peak, time_dry);	//added time_peak and time_dry by Youcan on 20170908
-		ApplyBoundaries(w, hu, hv, BC);
+                    hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
+                    dev_F_old, dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet,source_idx_dev, source_rate_dev,NumSources, dev_time_peak, dev_time_dry);	//added time_peak and time_dry by Youcan on 20170908
+		ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);
 
 		if (!euler_integration) {
 			
-			ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, my, BC, BX, BY, G, active_blocks,
-						  dt, n, hydrograph.interpolated_rate, dambreak_source_idx,
-						  hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
-						  F_old, dF, K,source_idx_dev, source_rate_dev,NumSources);
-			Integrate_2(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, BC,
-						G, wet_blocks, active_blocks, t, dt,
+			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
+						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
+						  hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
+						  dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
+			Integrate_2(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
+						dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
 						hydrograph.interpolated_rate, dambreak_source_idx,
-						hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
-						F_old, dF, K, h, q, h_max, q_max, t_wet,source_idx_dev, source_rate_dev,NumSources);
-			ApplyBoundaries(w, hu, hv, BC);
+						hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
+						dev_F_old, dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet,source_idx_dev, source_rate_dev,NumSources);
+			ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);
 		}
 
         if (t > hyetograph_tf && rainfall_gridded == true) {
 
-            memset(h_hyetograph, 0, h_nx*h_ny*sizeof(double));
-            checkCudaErrors(cudaMemcpy2D(hyetograph_gridded_rate, pitch, h_hyetograph,
-                                         h_nx*sizeof(double), h_nx*sizeof(double), h_ny,
+            memset(h_hyetograph, 0, grid_config.h_nx*grid_config.h_ny*sizeof(double));
+            checkCudaErrors(cudaMemcpy2D(dev_hyetograph_gridded_rate, pitch, h_hyetograph,
+                                         grid_config.h_nx*sizeof(double), grid_config.h_nx*sizeof(double), grid_config.h_ny,
                                          HtoD));
             rainfall_gridded = false;
         } else if (t > hyetograph_t && rainfall_gridded == true) {
@@ -702,25 +696,25 @@ double Simulator::RunSimulation() {
 
             hyetograph_file = hyetograph_file_ss.str();
 
-            SetOriginalGrid(hyetograph_o, hyetograph_file);
+            SetOriginalGrid(hyetograph_o, hyetograph_file, grid_config);
 
-            for (int j = 2; j < h_ny - 2; j++) {
-                for (int i = 2; i < h_nx - 2; i++) {
+            for (int j = 2; j < grid_config.h_ny - 2; j++) {
+                for (int i = 2; i < grid_config.h_nx - 2; i++) {
                     int jt = j - 2, it = i - 2;
 
-                    int ll = jt     * b_nx + it;     // lower-left bathymetry point
-                    int ul = (jt+1) * b_nx + it;     // upper-left bathymetry point
-                    int ur = (jt+1) * b_nx + (it+1); // upper-right bathymetry point
-                    int lr = jt     * b_nx + (it+1); // lower-right bathymetry point
+                    int ll = jt     * grid_config.b_nx + it;     // lower-left bathymetry point
+                    int ul = (jt+1) * grid_config.b_nx + it;     // upper-left bathymetry point
+                    int ur = (jt+1) * grid_config.b_nx + (it+1); // upper-right bathymetry point
+                    int lr = jt     * grid_config.b_nx + (it+1); // lower-right bathymetry point
 
-                    h_hyetograph[j*h_nx+i] = 0.25f*(hyetograph_o[ur]+hyetograph_o[lr]+
+                    h_hyetograph[j*grid_config.h_nx+i] = 0.25f*(hyetograph_o[ur]+hyetograph_o[lr]+
                                                     hyetograph_o[ll]+hyetograph_o[ul]);
-					V_added += h_hyetograph[j*h_nx + i] / 1000.f;					//added by Youcan on 20170612
-                    h_hyetograph[j*h_nx+i] /= (3600.f*1000.f);
+					V_added += h_hyetograph[j*grid_config.h_nx + i] / 1000.f;					//added by Youcan on 20170612
+                    h_hyetograph[j*grid_config.h_nx+i] /= (3600.f*1000.f);
                 }
             }
-            checkCudaErrors(cudaMemcpy2D(hyetograph_gridded_rate, pitch, h_hyetograph,
-                                         h_nx*sizeof(double), h_nx*sizeof(double), h_ny,
+            checkCudaErrors(cudaMemcpy2D(dev_hyetograph_gridded_rate, pitch, h_hyetograph,
+                                         grid_config.h_nx*sizeof(double), grid_config.h_nx*sizeof(double), grid_config.h_ny,
                                          HtoD));
         }
 
@@ -730,11 +724,11 @@ double Simulator::RunSimulation() {
 				t_print += dt_print;
 				std::cout << t << "\t" << dt;
 				double end_time = EndTimer();
-				long int computed_cells = (long int)(h_nx-3)*(long int)(h_ny-3)*(long int)count;
+				long int computed_cells = (long int)(grid_config.h_nx-3)*(long int)(grid_config.h_ny-3)*(long int)count;
 				
 				if (check_volume) {
-					std::cout << "\t" << V_added*h_dx*h_dy << "\t" << V_computed*h_dx*h_dy <<
-					"\t" << (V_computed - V_added) / V_added << "\t" << b_nx*b_ny << "\t"  << end_time << "\t" << (double)computed_cells / end_time /1000000.0 << "\t" << wet_count;
+					std::cout << "\t" << V_added*grid_config.h_dx*grid_config.h_dy << "\t" << V_computed*grid_config.h_dx*grid_config.h_dy <<
+					"\t" << (V_computed - V_added) / V_added << "\t" << grid_config.b_nx*grid_config.b_ny << "\t"  << end_time << "\t" << (double)computed_cells / end_time /1000000.0 << "\t" << dev_wet_count;
 				}
 				std::cout << std::endl;
 			}
@@ -763,15 +757,15 @@ void Simulator::InitializeSources(long numSources){
 }
 
 void Simulator::SetSourceLocation(int i,double X, double Y){
-	source_x = (int)((X-h_xll) / cellsize_original + 0.5);
+	source_x = (int)((X-grid_config.h_xll) / grid_config.cellsize_original + 0.5);
 	std::cout << "source_x is  " << source_x << std::endl; 
 	std::cout << "X is  " << X << std::endl;
-	std::cout << "h_xll is  " << h_xll << std::endl;
-	std::cout << "cellsize_original is  " << cellsize_original << std::endl;
-	source_y = (int)((Y-h_yll) / cellsize_original + 0.5);
+	std::cout << "h_xll is  " << grid_config.h_xll << std::endl;
+	std::cout << "cellsize_original is  " << grid_config.cellsize_original << std::endl;
+	source_y = (int)((Y-grid_config.h_yll) / grid_config.cellsize_original + 0.5);
 	std::cout << "Y location is  " << source_y << std::endl; 
-	int idx = source_y*h_nx + source_x;
-	std::cout << "hnx is  " << h_nx << " idx is " << idx << std::endl;
+	int idx = source_y*grid_config.h_nx + source_x;
+	std::cout << "hnx is  " << grid_config.h_nx << " idx is " << idx << std::endl;
 	source_idx[i] =  idx;
 		
 }
@@ -779,7 +773,7 @@ void Simulator::SetSourceLocation(int i,double X, double Y){
 void Simulator::setSourceValue (int i, double value){
 	
 
-	source_rate[i] = value/h_dx/h_dy;
+	source_rate[i] = value/grid_config.h_dx/grid_config.h_dy;
 	//std::cout << source_rate[i] <<std::endl;
 	if (check_volume) {
 		V_added += source_rate[i] * dt;

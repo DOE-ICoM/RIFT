@@ -2,6 +2,18 @@
 #define IO_H
 
 #include <string>
+struct GridConfig 
+{
+	int b_nx, b_ny;
+	double b_xll, b_yll;
+	double cellsize_original;
+	double nodata;
+
+	int h_nx, h_ny; 		// abscissa and oridnate grid dimension
+	double h_xll, h_yll;
+	double cellsize;
+	double h_dx, h_dy;		// abscissa and ordinate resolution (m)
+};
 
 typedef struct Grid {
 	int num_columns;
@@ -38,10 +50,11 @@ Grid *ReadGrid  (std::string filename);
 Grid *CreateGrid(int num_columns, int num_rows, double xll, double yll,
                  double cellsize, double nodata, double *data);
 
-void InitBathymetry(double *&b, std::string filename, const bool& square_cells);
-void ReadOriginalGrid(double *&G_original, std::string filename);
-void SetOriginalGrid(double *G_original, std::string filename);
-void writeGrid(const std::string& fname, double *x, const int& h_nx, const int& h_ny);
+
+// void InitBathymetry(double *&b, std::string filename);
+void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config, const bool& square_cells);
+void ReadOriginalGrid(double *&G_original, std::string filename, GridConfig& grid_config);
+void SetOriginalGrid(double *G_original, std::string filename, GridConfig& grid_config);
 void FreeBathymetry(double *&b);
 
 #endif
