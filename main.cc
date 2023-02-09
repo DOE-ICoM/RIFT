@@ -19,23 +19,32 @@ extern "C" {TNode* Node;}
 */
 void initializeSWMM(void);
 void closeSWMM(void);
-void updateSources(void);
-void close2D(void);
-void initialize2D(std::string);
-void initializeSources2D(void);
 
+void updateSources(Simulator* sim, float flow_input);
+void close2D(Simulator* sim);
+void initialize2D(Simulator* sim, std::string, float flow_input);
+void initializeSources2D(Simulator* sim);
+// void updateSources(void);
+// void close2D(void);
+// void initialize2D(std::string);
+// void initializeSources2D(void);
+void setSourceLocation(Simulator* sim);
+// void setSourceLocation(void);
 
-void setSourceLocation(void);
-float flows[1] = { 0
-};
- Simulator sim;
- float flow_input;
- //extern "C" int Nnodes[MAX_NODE_TYPES];
+// float flows[1] = { 0
+// };
+//  Simulator sim;
+//  float flow_input;
+//  //extern "C" int Nnodes[MAX_NODE_TYPES];
+
  int main(int argc, char *argv[]) {
 
-	 std::cout << "start";
+	Simulator sim;
+	float flow_input;
+	float flows[1] = {0};
+	std::cout << "start";
 
-	 for (int i = 0; i < 1; i++){
+	for (int i = 0; i < 1; i++){
 
 		 //flow_input = atof(argv[2]);
 		 flow_input = flows[i];
@@ -45,7 +54,7 @@ float flows[1] = { 0
 		
 		std::string cfg;
 		cfg =argv[1];// "./SampleData/sample.cfg"; 
-		initialize2D(cfg.c_str());
+		initialize2D(&sim, cfg.c_str(), flow_input);
 		 std::cout << "This will run for " << sim.tf << " seconds" << std::endl;
 		 while (sim.t < sim.tf && sim.steady_state){
 
@@ -56,25 +65,25 @@ float flows[1] = { 0
 		 }
 
 		
-		 close2D();
+		 close2D(&sim);
  }
 		/////////////////////////////////////////////////////////////////////////////////////////
     return 0;
 }
 
-void initialize2D(std::string cfg){
+void initialize2D(Simulator* sim, std::string cfg, float flow_input){
 	std::cout << "start Initialize" << std::endl ;
-	sim.OpenSimulation(cfg.c_str(), flow_input);
+	sim->OpenSimulation(cfg.c_str(), flow_input);
 }
 
-void close2D(){
-	sim.CloseSimulation();
+void close2D(Simulator* sim){
+	sim->CloseSimulation();
 }
 
-void initializeSources2D(){
-	sim.InitializeSources(2);
+void initializeSources2D(Simulator* sim){
+	sim->InitializeSources(2);
 }
-void setSourceLocation(){
+void setSourceLocation(Simulator* sim){
 	int j;
 	for (j = 0; j <= 1; j++){
 		float x, y;
@@ -90,11 +99,11 @@ void setSourceLocation(){
 
 		}
 
-		sim.SetSourceLocation(j, x, y);
+		sim->SetSourceLocation(j, x, y);
 	}
 }
 
-void updateSources(){
+void updateSources(Simulator* sim, float flow_input){
 	int j;
 
 	for (j = 0; j <= 1; j++){
@@ -114,10 +123,10 @@ void updateSources(){
 
 		}
 		//std::cout << "now setting source" << std::endl;
-		sim.setSourceValue(j, flow);
+		sim->setSourceValue(j, flow);
 		//printf("%.2f ", Node[j].overflow);
 	}
-	sim.updateSources();
+	sim->updateSources();
 	
 }
 
