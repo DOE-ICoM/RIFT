@@ -271,7 +271,7 @@ void Simulator::InitSimulation(void) {
 
 	
 
-	SetDeviceConstants(B->num_columns, B->num_rows, B->cellsize, kappa);
+    SetDeviceConstants(h_nx, h_ny, h_dx, h_dy, kappa);
 
 
 	AllocateGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, BC, BX, BY,

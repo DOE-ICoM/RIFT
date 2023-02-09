@@ -210,23 +210,20 @@ __device__ void getHY(double wp,   double hup,   double hvp,
     mx = fmaxf(mx, fmaxf(bp, -bm));
 }
 
-void SetDeviceConstants(int num_columns, int num_rows, double cellsize,
-                        double h_kappa) {
-    double cellsize_meters = (double)cellsize*6378137.f*(double)pi / 180.f;
-	int   grid_columns    = num_columns + 4 - 1;
-	int   grid_rows       = num_rows    + 4 - 1;
+void SetDeviceConstants(int num_columns, int num_rows, double cellxsize,
+                        double cellysize, double h_kappa) {
 
-    cudaMemcpyToSymbol(nx,    &grid_columns,    sizeof(int),   0, HtoD);
-    cudaMemcpyToSymbol(ny,    &grid_rows,       sizeof(int),   0, HtoD);
-    cudaMemcpyToSymbol(dx,    &cellsize_meters, sizeof(double), 0, HtoD);
-    cudaMemcpyToSymbol(dy,    &cellsize_meters, sizeof(double), 0, HtoD);
+    cudaMemcpyToSymbol(nx,    &num_columns,    sizeof(int),   0, HtoD);
+    cudaMemcpyToSymbol(ny,    &num_rows,       sizeof(int),   0, HtoD);
+    cudaMemcpyToSymbol(dx,    &cellxsize, sizeof(double), 0, HtoD);
+    cudaMemcpyToSymbol(dy,    &cellysize, sizeof(double), 0, HtoD);
     cudaMemcpyToSymbol(kappa, &h_kappa,         sizeof(double), 0, HtoD);
 
 	BlockDim.x = BLOCK_COLS;
 	BlockDim.y = BLOCK_ROWS;
 
-	int num_blocks_x = ceil((double)grid_columns / (double)BlockDim.x);
-	int num_blocks_y = ceil((double)grid_rows    / (double)BlockDim.y);
+	int num_blocks_x = ceil((double)num_columns / (double)BlockDim.x);
+	int num_blocks_y = ceil((double)num_rows    / (double)BlockDim.y);
 
     GridDim.x = num_blocks_x;
     GridDim.y = num_blocks_y;

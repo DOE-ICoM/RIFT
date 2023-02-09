@@ -3,7 +3,8 @@
 
 #include "simulator.h"
 
-void SetDeviceConstants(int num_columns, int num_rows, double cellsize, double h_kappa);
+void SetDeviceConstants(int num_columns, int num_rows,
+                        double cellxsize, double cellysize, double h_kappa);
 
 void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   double *&hu_old, double *&hv_old, double *&dw, double *&dhu,
