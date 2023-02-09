@@ -4,6 +4,7 @@
 #include <omp.h>
 #include <iostream>
 #include <stdexcept>
+#include <math.h>
 #include "constants.h"
 #include "io.h"
 
@@ -17,6 +18,49 @@ double h_xll, h_yll;
 double cellsize;
 
 double h_dx, h_dy;
+
+/* 
+   Blatently plagerized from 
+   https://rosettacode.org/wiki/Haversine_formula#C++
+*/
+
+inline double DegreeToRadian(double angle)
+{
+	return M_PI * angle / 180.0;
+}
+
+static double HaversineDistance(const double& long1, const double& lat1,
+                         const double& long2, const double& lat2)
+{
+    const static double EarthRadiusKm = 6372.8;
+    double latRad1 = DegreeToRadian(lat1);
+	double latRad2 = DegreeToRadian(lat2);
+	double lonRad1 = DegreeToRadian(long1);
+	double lonRad2 = DegreeToRadian(long2);
+
+	double diffLa = latRad2 - latRad1;
+	double doffLo = lonRad2 - lonRad1;
+
+	double computation =
+        asin(sqrt(sin(diffLa / 2) * sin(diffLa / 2) +
+                  cos(latRad1) * cos(latRad2) * sin(doffLo / 2) * sin(doffLo / 2)));
+	return 2 * EarthRadiusKm * computation;
+}
+
+static void ComputeCellSize(const int &nx, const int &ny,
+                     const double &xmin, const double &ymin, const double &cellsize,
+                     double &dx, double &dy) {
+    double domain_width_deg(nx*cellsize);
+    double domain_height_deg(ny*cellsize);
+    double xcenter(xmin + domain_width_deg/2.0), xmax(xmin + domain_width_deg);
+    double ycenter(ymin + domain_height_deg/2.0), ymax(ymin + domain_height_deg);
+    
+    double domain_width_m = HaversineDistance(xmin, ycenter, xmax, ycenter);
+    double domain_height_m = HaversineDistance(xcenter, ymin, xcenter, ymax);
+
+    dx = domain_width_m/nx*1000.0;
+    dy = domain_height_m/ny*1000.0;
+}
 
 void InitBathymetry(double *&b, std::string filename) {
 
@@ -91,6 +135,10 @@ void InitBathymetry(double *&b, std::string filename) {
         }
     }
 
+    double tmp_dx, tmp_dy;
+
+    ComputeCellSize(b_nx, b_ny, h_xll, h_yll, cellsize_original, tmp_dx, tmp_dy);
+
     // Convert cellsize from degrees to meters and set dx, dy
     h_dx     = (double )cellsize_original*6378137.f*(double )pi / 180.f;
     h_dy     = (double )cellsize_original*6378137.f*(double )pi / 180.f;    
@@ -98,6 +146,11 @@ void InitBathymetry(double *&b, std::string filename) {
 
     h_nx = b_nx + 4 - 1;
     h_ny = b_ny + 4 - 1;
+
+    std::cout << "Computed Cell Sizes: " << std::endl;
+    std::cout << "\tOriginal (deg): " << cellsize_original << std::endl;
+    std::cout << "\tOriginal (m): " << cellsize << std::endl;
+    std::cout << "\tNew (m): " << tmp_dx << ", " << tmp_dy << std::endl;
 }
 
 void ReadOriginalGrid(double *&G_original, std::string filename) {
