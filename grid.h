@@ -8,7 +8,7 @@ void SetDeviceConstants(int num_columns, int num_rows,
 
 void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   double *&hu_old, double *&hv_old, double *&dw, double *&dhu,
-                  double *&dhv, double *&mx, double *&BC, double *&BX, double *&BY,
+                  double *&dhv, double *&mx, double *&my, double *&BC, double *&BX, double *&BY,
                   bool *&wet_blocks, int *&active_blocks, double *&n,
                   double *&hyetograph_gridded_rate, double *&F, double *&F_old,
                   double *&dF, double *&K, double *&h, double *&q, double *&h_max,
@@ -24,7 +24,7 @@ void InitGrid(double *w, double *hu, double *hv, double *w_old, double *hu_old,
               int *active_blocks, double *h, double *t_wet, double *G);
 
 void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
-                   double *dhv, double *mx, double *BC, double *BX, double *BY,
+                   double *dhv, double *mx, double *my, double *BC, double *BX, double *BY,
                    double *G, int *active_blocks, double dt, double *n,
                    double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate, double *hyetograph_gridded_rate,
@@ -51,7 +51,7 @@ void Grow(bool *wet_blocks, int *active_blocks, double *hyetograph_gridded_rate,
 void ApplyBoundaries(double *w, double *hu, double *hv, double *BC);
 
 void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_old,
-              double *&hv_old, double *&dw, double *&dhu, double *&dhv, double *&mx,
+              double *&hv_old, double *&dw, double *&dhu, double *&dhv, double *&mx, double *&my,
               double *&BC, double *&BX, double *&BY, bool *&wet_blocks,
               int *&active_blocks, double *&n, double *&hyetograph_gridded_rate,
               double *&F, double *&F_old, double *&dF, double *&K, double *&h,

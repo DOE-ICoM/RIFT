@@ -23,7 +23,7 @@ typedef std::numeric_limits<double>  flt;
 
 
 // Define device arrays
-double *w, *hu, *hv, *w_old, *hu_old, *hv_old, *dw, *dhu, *dhv, *mx, *BC, *BX,
+double *w, *hu, *hv, *w_old, *hu_old, *hv_old, *dw, *dhu, *dhv, *mx, *my, *BC, *BX,
       *BY, *n, *hyetograph_gridded_rate, *F, *F_old, *dF, *K, *h, *q, *h_max,
 	*q_max, *t_wet, *time_peak, *time_dry, *G;									//added time_peak and time_dry by Youcan on 20170908
 bool *wet_blocks;
@@ -274,7 +274,7 @@ void Simulator::InitSimulation(void) {
     SetDeviceConstants(h_nx, h_ny, h_dx, h_dy, kappa);
 
 
-	AllocateGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, BC, BX, BY,
+	AllocateGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, my, BC, BX, BY,
                  wet_blocks, active_blocks, n, hyetograph_gridded_rate, F,
                  F_old, dF, K, h, q, h_max, q_max, t_wet, dambreak,
 	             rainfall_averaged, rainfall_gridded, infiltration, 
@@ -430,21 +430,24 @@ void Simulator::UpdateSource(void) {
 
 void Simulator::ComputeTimestep() {
 	//std::cout << "compute time step" << std::endl; 
-    thrust::device_ptr<double> mxptr(mx);
-    thrust::device_ptr<double> mxresptr;
+    thrust::device_ptr<double> mxptr(mx), myptr(my);
+    thrust::device_ptr<double> mxresptr, myresptr;
 	mxresptr=thrust::max_element(mxptr,mxptr + GridSize);
-    //mxresptr = thrust::max_element(mxptr, mxptr + GridSize);
+	myresptr=thrust::max_element(myptr,myptr + GridSize);
 
-    double max_x = mxresptr[0];
+    double max_x = mxresptr[0], max_y = myresptr[0];
 
     double c_x = h_dx / fmaxf(max_x/courant_max, kappa);
+    double c_y = h_dy / fmaxf(max_y/courant_max, kappa);
 
     // WAP: This seems like a very arbitrary (and rather small)
     // maximum limit on time step.  I cannot identify a source for
     // it. What does this add over the use of 'kappa' above). Does
     // kappa need to be an input parameter again?
-    dt = fminf(c_x, h_dx/10.f);
+    // dt = fminf(c_x, h_dx/10.f);
     
+    dt = min(c_x, c_y);
+
 	dt = (t == 0.f) ? dt = 0.000001f : dt;	
 	t += dt;
     // std::cout << "max_x = " << max_x
@@ -685,7 +688,7 @@ void Simulator::CloseSimulation(){
 		PrintSummaryData();
 	}
 
-	FreeGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, BC, BX, BY,
+	FreeGrid(w, hu, hv, w_old, hu_old, hv_old, dw, dhu, dhv, mx, my, BC, BX, BY,
 	         wet_blocks, active_blocks, n, hyetograph_gridded_rate, F, F_old,
              dF, K, h, q, h_max, q_max, t_wet, time_peak, time_dry, G);		//added t_peak and t_dry by Youcan on 20170908
 
@@ -729,7 +732,7 @@ double Simulator::RunSimulation() {
 		//std::cout << "Grow Blocks" << std::endl; 
 		Grow(wet_blocks, active_blocks, hyetograph_gridded_rate, rainfall_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
-        ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, BC, BX, BY, G, active_blocks,
+        ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, my, BC, BX, BY, G, active_blocks,
 		              dt, n, hydrograph.interpolated_rate, dambreak_source_idx,
 		              hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
 					  F_old, dF, K,source_idx_dev,source_rate_dev,NumSources);
@@ -744,7 +747,7 @@ double Simulator::RunSimulation() {
 
 		if (!euler_integration) {
 			
-			ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, BC, BX, BY, G, active_blocks,
+			ComputeFluxes(w, hu, hv, dw, dhu, dhv, mx, my, BC, BX, BY, G, active_blocks,
 						  dt, n, hydrograph.interpolated_rate, dambreak_source_idx,
 						  hyetograph.interpolated_rate, hyetograph_gridded_rate, F,
 						  F_old, dF, K,source_idx_dev, source_rate_dev,NumSources);

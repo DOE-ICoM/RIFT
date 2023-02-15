@@ -144,6 +144,9 @@ void InitBathymetry(double *&b, std::string filename) {
     h_dy     = (double )cellsize_original*6378137.f*(double )pi / 180.f;    
     cellsize =        cellsize_original*6378137.0*       pi / 180.0;
 
+    h_dx = tmp_dx;
+    h_dy = tmp_dy;
+
     h_nx = b_nx + 4 - 1;
     h_ny = b_ny + 4 - 1;
 

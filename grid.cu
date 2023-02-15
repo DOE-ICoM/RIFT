@@ -164,7 +164,7 @@ __device__ void getHX(double wp,   double hup,   double hvp,
 __device__ void getHY(double wp,   double hup,   double hvp,
                       double wp1m, double hup1m, double hvp1m,
                       double &dwp, double &dhup, double &dhvp,
-                      double &mx,  double Bp) {
+                      double &my,  double Bp) {
 	double hp   = wp   - Bp;
 	double hp1m = wp1m - Bp;
     double up   = getVelocity(hp,   hup);
@@ -207,7 +207,7 @@ __device__ void getHY(double wp,   double hup,   double hvp,
         dwp = dhup = dhvp = 0.f;
     }
 
-    mx = fmaxf(mx, fmaxf(bp, -bm));
+    my = fmaxf(bp, -bm);
 }
 
 void SetDeviceConstants(int num_columns, int num_rows, double cellxsize,
@@ -237,7 +237,7 @@ void SetDeviceConstants(int num_columns, int num_rows, double cellxsize,
 
 void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   double *&hu_old, double *&hv_old, double *&dw, double *&dhu,
-                  double *&dhv, double *&mx, double *&BC, double *&BX, double *&BY,
+                  double *&dhv, double *&mx, double *&my, double *&BC, double *&BX, double *&BY,
                   bool *&wet_blocks, int *&active_blocks, double *&n,
                   double *&hyetograph_gridded_rate, double *&F, double *&F_old,
                   double *&dF, double *&K, double *&h, double *&q, double *&h_max,
@@ -366,10 +366,12 @@ std::endl;
     checkCudaErrors(cudaMalloc((void**)&wet_blocks,    GrowGridSize*sizeof(bool) ));
     checkCudaErrors(cudaMalloc((void**)&active_blocks, GrowGridSize*sizeof(int)  ));
     checkCudaErrors(cudaMalloc((void**)&mx,            GrowGridSize*sizeof(double)));
+    checkCudaErrors(cudaMalloc((void**)&my,            GrowGridSize*sizeof(double)));
 
     checkCudaErrors(cudaMemset(wet_blocks,    (bool) false, GridSize*sizeof(bool) ));
     checkCudaErrors(cudaMemset(active_blocks, (int)  -1,    GridSize*sizeof(int)  ));
     checkCudaErrors(cudaMemset(mx,            (double) 0,    GridSize*sizeof(double)));
+    checkCudaErrors(cudaMemset(my,            (double) 0,    GridSize*sizeof(double)));
 }
 
 __global__ void InitGrid_k(double *w, double *hu, double  *hv, double *w_old,
@@ -431,7 +433,7 @@ void InitGrid(double *w, double *hu, double *hv, double *w_old, double *hu_old,
 }
 
 __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
-                                double *dhu, double *dhv, double *mx, double *BC,
+                                double *dhu, double *dhv, double *mx, double *my, double *BC,
                                 double *BX, double *BY, double *G, int *active_blocks,
                                 double dt, size_t pitch, size_t pitchBX,
                                 size_t pitchBY, double *n, double hydrograph_rate,
@@ -461,6 +463,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	__shared__ double dhup[BLOCK_ROWS+1][BLOCK_COLS+1];
 	__shared__ double dhvp[BLOCK_ROWS+1][BLOCK_COLS+1];
     __shared__ double mxsum[BLOCK_ROWS][BLOCK_COLS];
+    __shared__ double mysum[BLOCK_ROWS][BLOCK_COLS];
 
     __syncthreads();
 
@@ -545,7 +548,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 
 	__syncthreads();
 
-    double smx;
+    double smx, smy;
 
 	getHX(swp[tidy+1][tidx+1], shup[tidy+1][tidx+1], shvp[tidy+1][tidx+1],
 		  swm[tidy+1][tidx+2], shum[tidy+1][tidx+2], shvm[tidy+1][tidx+2],
@@ -595,7 +598,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	getHY(swp[tidy+1][tidx+1], shup[tidy+1][tidx+1], shvp[tidy+1][tidx+1],
 		  swm[tidy+2][tidx+1], shum[tidy+2][tidx+1], shvm[tidy+2][tidx+1],
 		  dwp[tidy+1][tidx+1], dhup[tidy+1][tidx+1], dhvp[tidy+1][tidx+1],
-		  smx,                 sBZ [tidy+3][tidx+2]);
+		  smy,                 sBZ [tidy+3][tidx+2]);
 
 	if (tidx < BLOCK_COLS) {
 		getHY(swp[0][tidx+1], shup[0][tidx+1], shvp[0][tidx+1],
@@ -670,8 +673,10 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
     *dhv_ij += S2;
 
     mxsum[tidy][tidx] = smx;
+    mysum[tidy][tidx] = smy;
     if (i > nx - 3 || j > ny - 3) {
         mxsum[tidy][tidx] = 0.f;
+        mysum[tidy][tidx] = 0.f;
     }
 
     __syncthreads();
@@ -679,6 +684,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	if (tidx == 0) {
 		for (int k = 0; k < BLOCK_COLS; k++) {
 			mxsum[tidy][tidx] = fmaxf(mxsum[tidy][tidx], mxsum[tidy][k]);
+			mysum[tidy][tidx] = fmaxf(mysum[tidy][tidx], mysum[tidy][k]);
 		}
 	}
 
@@ -687,18 +693,20 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 	if (tidy == 0 && tidx == 0) {
 		for (int l = 0; l < BLOCK_ROWS; l++) {
 			mxsum[tidy][tidx] = fmaxf(mxsum[tidy][tidx], mxsum[l][tidx]);
+			mysum[tidy][tidx] = fmaxf(mysum[tidy][tidx], mysum[l][tidx]);
 		}
 		mx[blockY*nBlocksX+blockX] = mxsum[tidy][tidx];
+		my[blockY*nBlocksX+blockX] = mysum[tidy][tidx];
 	}
 }
 
 void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
-                   double *dhv, double *mx, double *BC, double *BX, double *BY,
+                   double *dhv, double *mx, double *my, double *BC, double *BX, double *BY,
                    double *G, int *active_blocks, double dt, double *n,
                    double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate, double *hyetograph_gridded_rate,
                    double *F, double *F_old, double *dF, double *K, int *source_idx_dev, double *source_rate_dev, long numSources) {
-    ComputeFluxes_k <<< nBlocks, BlockDim >>> (w, hu, hv, dw, dhu, dhv, mx, BC,
+    ComputeFluxes_k <<< nBlocks, BlockDim >>> (w, hu, hv, dw, dhu, dhv, mx, my, BC,
 	                                           BX, BY, G, active_blocks, dt, pitch,
 	                                           pitchBX, pitchBY, n,
 	                                           hydrograph_rate,
@@ -1214,7 +1222,7 @@ void ApplyBoundaries(double *w, double *hu, double *hv, double *BC) {
 }
 
 void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_old,
-              double *&hv_old, double *&dw, double *&dhu, double *&dhv, double *&mx,
+              double *&hv_old, double *&dw, double *&dhu, double *&dhv, double *&mx, double *&my,
               double *&BC, double *&BX, double *&BY, bool *&wet_blocks,
               int *&active_blocks, double *&n, double *&hyetograph_gridded_rate,
               double *&F, double *&F_old, double *&dF, double *&K, double *&h,
@@ -1234,6 +1242,7 @@ void FreeGrid(double *&w, double *&hu, double *&hv, double *&w_old, double *&hu_
     cudaFree(BX);
     cudaFree(BY);
     cudaFree(mx);
+    cudaFree(my);
     cudaFree(wet_blocks);
     cudaFree(active_blocks);
 	cudaFree(hyetograph_gridded_rate);
