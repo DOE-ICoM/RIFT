@@ -196,6 +196,7 @@ void Simulator::InitSimulation(void) {
 
     // Load the user-defined bathymetry
     InitBathymetry(b, DEM_file, this->grid_config);
+	f_b = 1; // b is allocated
 	B = ReadGrid(DEM_file);
 
 	//if (cfg.keyExists("kappa")) {
@@ -207,15 +208,18 @@ void Simulator::InitSimulation(void) {
 
 	if (h_init || h_print) {
 		h_h = (double*)malloc(grid_config.h_nx * grid_config.h_ny * sizeof(double));
+		f_h_h = 1;
 		memset(h_h, 0, grid_config.h_nx * grid_config.h_ny * sizeof(double));
 		if (h_init) {
-			h_o  = (double*)malloc(b_nx*b_ny*sizeof(double));
-			SetOriginalGrid(h_o, h_file);
+			h_o  = (double*)malloc(grid_config.b_nx * grid_config.b_ny * sizeof(double));
+			f_h_o = 1;
+			ReadOriginalGrid(h_o, h_file, this->grid_config);
 		}
 	}
 
 	if (rainfall_gridded) {
 		h_hyetograph = (double*)malloc(grid_config.h_nx * grid_config.h_ny * sizeof(double));
+		f_h_hyetograph = 1;
 		memset(h_hyetograph, 0, grid_config.h_nx * grid_config.h_ny * sizeof(double));
 
 		std::stringstream hyetograph_file_ss;
@@ -229,21 +233,26 @@ void Simulator::InitSimulation(void) {
 
 		hyetograph_file = hyetograph_file_ss.str();
 
-		hyetograph_o = (double*)malloc(b_nx*b_ny*sizeof(double));
-		SetOriginalGrid(hyetograph_o, hyetograph_file);
+		hyetograph_o = (double*)malloc(grid_config.b_nx*grid_config.b_ny*sizeof(double));
+		f_hyetograph_o = 1;
+		ReadOriginalGrid(hyetograph_o, hyetograph_file, this->grid_config);
 	}
 	
     h_n = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
+	f_h_n = 1;
     memset(h_n, 0, grid_config.h_nx*grid_config.h_ny*sizeof(double));
     if (n_gridded) {
-        n_o = (double*)malloc(b_nx*b_ny*sizeof(double));
-		SetOriginalGrid(n_o, n_file);
+        n_o = (double*)malloc(grid_config.b_nx*grid_config.b_ny*sizeof(double));
+		f_n_o = 1;
+		ReadOriginalGrid(n_o, n_file, this->grid_config);
     } 
 	
 	if (infiltration) {
-		K_o = (double*)malloc(b_nx*b_ny*sizeof(double));
-		h_K = (double*)malloc(h_nx*h_ny*sizeof(double));
-		SetOriginalGrid(K_o, K_file);
+		K_o = (double*)malloc(grid_config.b_nx*grid_config.b_ny*sizeof(double));
+		f_K_o = 1;
+		h_K = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
+		f_h_K = 1;
+		ReadOriginalGrid(K_o, K_file, this->grid_config);
 	}
 
 	
@@ -276,7 +285,9 @@ void Simulator::InitSimulation(void) {
 
 
     h_BX = (double*)malloc(grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
+	f_h_BX = 1;
     h_BY = (double*)malloc((grid_config.h_ny+1)*grid_config.h_nx*sizeof(double));
+	f_h_BY = 1;
     memset(h_BX, 0, grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
     memset(h_BY, 0, (grid_config.h_ny+1)*grid_config.h_nx*sizeof(double));
 
@@ -363,10 +374,12 @@ void Simulator::InitSimulation(void) {
 
 	if (q_print) {
 		h_q  = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
+		f_h_q = 1;
 	}
 
 	if (check_volume && infiltration) {
 		h_F = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
+		f_h_F = 1;
 	}
 
 	InitGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_BC, dev_BX, dev_BY, dev_wet_blocks,
@@ -607,28 +620,26 @@ void Simulator::CloseSimulation(){
 	FreeGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY,
 	         dev_wet_blocks, dev_active_blocks, dev_n, dev_hyetograph_gridded_rate, dev_F, dev_F_old,
              dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dev_time_peak, dev_time_dry, dev_G);		//added t_peak and t_dry by Youcan on 20170908
-
-    free(b);
-    free(h_BX);
-    free(h_BY);
-	free(h_h);
-	free(h_q);
-    free(h_hyetograph);
-	free(h_n);
-	free(h_K);
-	free(h_F);
+	if(f_b) 			free(b);
+	if(f_h_BX) 			free(h_BX);
+	if(f_h_BY) 			free(h_BY);
+	if(f_h_h) 			free(h_h);
+	if(f_h_q)			free(h_q);
+    if(f_h_hyetograph) 	free(h_hyetograph);
+	if(f_h_n)			free(h_n);
+	if(f_h_K)			free(h_K);
+	if(f_h_F)			free(h_F);
 	free(h_o);
-    free(hyetograph_o);
-	free(n_o);
-	free(K_o);
-	free(h_h_max);
-	free(h_q_max);
-	free(h_t_wet);
+    if(f_hyetograph_o)	free(hyetograph_o);
+	if(f_n_o)			free(n_o);
+	if(f_K_o)			free(K_o);
+	if(f_h_h_max) 		free(h_h_max);
+	if(f_h_q_max) 		free(h_q_max);
+	if(f_h_t_wet)		free(h_t_wet);
 	free(B->data);
-
 	/** Added for 1D-2D*/
-	free(source_idx);
-	free(source_rate);
+	if(f_source_idx) 	free(source_idx);
+	if(f_source_rate)	free(source_rate);
 	cudaFree(source_idx_dev);
 	cudaFree(source_rate_dev);
 }
@@ -748,7 +759,9 @@ double Simulator::RunSimulation() {
 void Simulator::InitializeSources(long numSources){
 	NumSources = numSources; //set the public variable
 	source_idx = (int*)malloc(numSources*sizeof(int));
+	f_source_idx = 1;
 	source_rate = (double*)malloc(numSources*sizeof(double));
+	f_source_rate = 1;
 	memset(source_idx,0,numSources*sizeof(int));
 	memset(source_rate,0,numSources*sizeof(double));
 	checkCudaErrors(cudaMalloc((void**)&source_idx_dev,numSources*sizeof(int)));

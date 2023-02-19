@@ -12,6 +12,12 @@
 class Simulator {
 
 public:
+	// Constructor (initialize malloc flags)
+	Simulator():f_h_o(0), f_n_o(0), f_K_o(0), f_hyetograph_o(0), f_b(0), f_h_BX(0), f_h_BY(0), 
+		f_h_hyetograph(0), f_h_n(0), f_h_F(0), f_h_K(0), f_h_q(0), f_h_h(0), f_h_h_max(0),
+		f_h_q_max(0), f_h_t_wet(0), f_source_rate(0), f_source_idx(0) 
+		{}
+
 	std::string DEM_file;
 	std::string output_file;
 
@@ -115,7 +121,11 @@ public:
 	double *h_o, *n_o, *K_o, *hyetograph_o;
 	double *b, *h_BX, *h_BY, *h_hyetograph, *h_n, *h_F, *h_K, *h_q, *h_h, *h_h_max,
       *h_q_max, *h_t_wet;
-	
+	// malloc flags
+	int f_h_o, f_n_o, f_K_o, f_hyetograph_o, f_b, f_h_BX, f_h_BY, 
+		f_h_hyetograph, f_h_n, f_h_F, f_h_K, f_h_q, f_h_h, f_h_h_max,
+		f_h_q_max, f_h_t_wet, f_source_idx, f_source_rate;
+
 	Grid *B;
 
 	// Define device arrays

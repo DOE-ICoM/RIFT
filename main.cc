@@ -63,8 +63,6 @@ void setSourceLocation(Simulator* sim);
 			 //std::cout << "Updating sources...";
 
 		 }
-
-		
 		 close2D(&sim);
  }
 		/////////////////////////////////////////////////////////////////////////////////////////
