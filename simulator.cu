@@ -193,6 +193,11 @@ void Simulator::ReadUserParams(std::string config_file) {
 		device = 0;
 	}
 
+    if (cfg.keyExists("square_cells")) {
+        square_cells = cfg.getValueOfKey<bool>("square_cells");
+    } else {
+        square_cells = true;
+    }
 
 	V_added = 0.f;
 
@@ -204,7 +209,7 @@ void Simulator::InitSimulation(void) {
 	volume_old = 0;
 
     // Load the user-defined bathymetry
-    InitBathymetry(b, DEM_file);
+    InitBathymetry(b, DEM_file, square_cells);
 	B = ReadGrid(DEM_file);
 
 	//if (cfg.keyExists("kappa")) {

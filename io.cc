@@ -62,7 +62,7 @@ static void ComputeCellSize(const int &nx, const int &ny,
     dy = domain_height_m/ny*1000.0;
 }
 
-void InitBathymetry(double *&b, std::string filename) {
+void InitBathymetry(double *&b, std::string filename, const bool& square_cells) {
 
     double minimum = 9999.f;
     std::ifstream ifs;
@@ -152,8 +152,8 @@ void InitBathymetry(double *&b, std::string filename) {
 
     std::cout << "Computed Cell Sizes: " << std::endl;
     std::cout << "\tOriginal (deg): " << cellsize_original << std::endl;
-    std::cout << "\tOriginal (m): " << cellsize << std::endl;
-    std::cout << "\tNew (m): " << tmp_dx << ", " << tmp_dy << std::endl;
+    // std::cout << "\tOriginal (m): " << cellsize << std::endl;
+    std::cout << "\tInternal (m): " << h_dx << ", " << h_dy << std::endl;
 }
 
 void ReadOriginalGrid(double *&G_original, std::string filename) {
