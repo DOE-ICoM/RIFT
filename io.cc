@@ -135,24 +135,21 @@ void InitBathymetry(double *&b, std::string filename, const bool& square_cells) 
         }
     }
 
-    double tmp_dx, tmp_dy;
-
-    ComputeCellSize(b_nx, b_ny, h_xll, h_yll, cellsize_original, tmp_dx, tmp_dy);
-
-    // Convert cellsize from degrees to meters and set dx, dy
-    h_dx     = (double )cellsize_original*6378137.f*(double )pi / 180.f;
-    h_dy     = (double )cellsize_original*6378137.f*(double )pi / 180.f;    
     cellsize =        cellsize_original*6378137.0*       pi / 180.0;
-
-    h_dx = tmp_dx;
-    h_dy = tmp_dy;
+    if (square_cells) {
+        // Convert cellsize from degrees to meters and set dx, dy
+        h_dx     = (double )cellsize_original*6378137.f*(double )pi / 180.f;
+        h_dy     = (double )cellsize_original*6378137.f*(double )pi / 180.f;    
+    } else {
+        ComputeCellSize(b_nx, b_ny, h_xll, h_yll, cellsize_original, h_dx, h_dy);
+    }
 
     h_nx = b_nx + 4 - 1;
     h_ny = b_ny + 4 - 1;
 
     std::cout << "Computed Cell Sizes: " << std::endl;
     std::cout << "\tOriginal (deg): " << cellsize_original << std::endl;
-    // std::cout << "\tOriginal (m): " << cellsize << std::endl;
+    std::cout << "\tOriginal (m): " << cellsize << std::endl;
     std::cout << "\tInternal (m): " << h_dx << ", " << h_dy << std::endl;
 }
 
