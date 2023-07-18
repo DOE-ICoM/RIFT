@@ -129,7 +129,7 @@ public:
 	Grid *B;
 
 	// Define device arrays
-	double *dev_w, *dev_hu, *dev_hv, *dev_w_old, *dev_hu_old, *dev_hv_old, *dev_dw, *dev_dhu, *dev_dhv, *dev_mx, *dev_BC, *dev_BX,
+  double *dev_w, *dev_hu, *dev_hv, *dev_w_old, *dev_hu_old, *dev_hv_old, *dev_dw, *dev_dhu, *dev_dhv, *dev_mx, *dev_my, *dev_BC, *dev_BX,
       		*dev_BY, *dev_n, *dev_hyetograph_gridded_rate, *dev_F, *dev_F_old, *dev_dF, *dev_K, *dev_h, *dev_q, *dev_h_max,
 			*dev_q_max, *dev_t_wet, *dev_G, *dev_time_peak, *dev_time_dry;
 	bool *dev_wet_blocks;

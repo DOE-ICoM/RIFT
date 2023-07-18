@@ -65,7 +65,7 @@ static void ComputeCellSize(const int &nx, const int &ny,
 }
 
 // depth of water - oceans, seas or lakes
-void InitBathymetry(double *&b, std::string filename, const bool& square_cells) {
+void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config, const bool& square_cells) {
 
     double minimum = 9999.f;
     std::ifstream ifs;

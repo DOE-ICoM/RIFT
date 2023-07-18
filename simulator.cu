@@ -195,7 +195,7 @@ void Simulator::InitSimulation(void) {
 	volume_old = 0;
 
     // Load the user-defined bathymetry
-    InitBathymetry(b, DEM_file, this->grid_config);
+    InitBathymetry(b, DEM_file, this->grid_config, square_cells);
 	f_b = 1; // b is allocated
 	B = ReadGrid(DEM_file);
 
@@ -269,11 +269,12 @@ void Simulator::InitSimulation(void) {
 			}
 	}
 
-	SetDeviceConstants(B->num_columns, B->num_rows, B->cellsize, kappa);
+	SetDeviceConstants(grid_config.h_nx, grid_config.h_ny,
+                       grid_config.h_dx, grid_config.h_dy, kappa);
 
 
 	AllocateGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, 
-				 dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY,
+				 dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY,
                  dev_wet_blocks, dev_active_blocks, dev_n, 
 				 dev_hyetograph_gridded_rate, dev_F, dev_F_old, dev_dF, dev_K,
 				 dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dambreak,
@@ -435,15 +436,15 @@ void Simulator::UpdateSource(void) {
 
 void Simulator::ComputeTimestep() {
 	//std::cout << "compute time step" << std::endl; 
-    thrust::device_ptr<double> mxptr(mx), myptr(my);
+    thrust::device_ptr<double> mxptr(dev_mx), myptr(dev_my);
     thrust::device_ptr<double> mxresptr, myresptr;
 	mxresptr=thrust::max_element(mxptr,mxptr + GridSize);
 	myresptr=thrust::max_element(myptr,myptr + GridSize);
 
     double max_x = mxresptr[0], max_y = myresptr[0];
 
-    double c_x = h_dx / fmaxf(max_x/courant_max, kappa);
-    double c_y = h_dy / fmaxf(max_y/courant_max, kappa);
+    double c_x = grid_config.h_dx / fmaxf(max_x/courant_max, kappa);
+    double c_y = grid_config.h_dy / fmaxf(max_y/courant_max, kappa);
 
     // WAP: This seems like a very arbitrary (and rather small)
     // maximum limit on time step.  I cannot identify a source for
@@ -617,7 +618,7 @@ void Simulator::CloseSimulation(){
 		PrintSummaryData();
 	}
 
-	FreeGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY,
+	FreeGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY,
 	         dev_wet_blocks, dev_active_blocks, dev_n, dev_hyetograph_gridded_rate, dev_F, dev_F_old,
              dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dev_time_peak, dev_time_dry, dev_G);		//added t_peak and t_dry by Youcan on 20170908
 	if(f_b) 			free(b);
@@ -659,7 +660,7 @@ double Simulator::RunSimulation() {
 		//std::cout << "Grow Blocks" << std::endl; 
 		Grow(dev_wet_blocks, dev_active_blocks, dev_hyetograph_gridded_rate, rainfall_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
-        ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
+        ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
 		              hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
 					  dev_F_old, dev_dF, dev_K,source_idx_dev,source_rate_dev,NumSources);
@@ -674,7 +675,7 @@ double Simulator::RunSimulation() {
 
 		if (!euler_integration) {
 			
-			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
+			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
 						  hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
 						  dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
