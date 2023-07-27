@@ -630,7 +630,7 @@ void Simulator::CloseSimulation(){
 	if(f_h_n)			free(h_n);
 	if(f_h_K)			free(h_K);
 	if(f_h_F)			free(h_F);
-	free(h_o);
+	if(f_h_o)           free(h_o);
     if(f_hyetograph_o)	free(hyetograph_o);
 	if(f_n_o)			free(n_o);
 	if(f_K_o)			free(K_o);
@@ -651,7 +651,7 @@ double Simulator::RunSimulation() {
 	// tf; 
    // while (t < tf) {
 	//updateSources();
-	checkCudaErrors(cudaMemcpy(source_idx_dev,source_idx,NumSources*sizeof(int),HtoD));
+	// checkCudaErrors(cudaMemcpy(source_idx_dev,source_idx,NumSources*sizeof(int),HtoD));
 
 		if (dambreak || rainfall_averaged) {
 			//std::cout << "updating source" << std::endl; 
