@@ -115,6 +115,7 @@ void Simulator::ReadUserParams(std::string config_file) {
 		std::cout << "X location is  " << source_X << " and Y location is " << source_Y << std::endl; 
 	} else {
 		dambreak = false;
+        NumSources = 0;
 	}
 
 	if (cfg.keyExists("hyetograph")) {
@@ -262,14 +263,14 @@ void Simulator::InitSimulation(void) {
 
 	
 	
-	// int i;
+    
 		if (dambreak) {
 					std::cout << "This is a dam break" << std::endl; 
 
 			NumSources = 1;
 			InitializeSources(NumSources);
 			int j;
-			for (j=0; j<=NumSources;j++){
+			for (j=0; j<NumSources;j++){
 				SetSourceLocation(j,source_X,source_Y);
 			}
 	}
