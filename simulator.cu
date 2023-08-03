@@ -639,10 +639,14 @@ void Simulator::CloseSimulation(){
 	if(f_h_t_wet)		free(h_t_wet);
 	free(B->data);
 	/** Added for 1D-2D*/
-	if(f_source_idx) 	free(source_idx);
-	if(f_source_rate)	free(source_rate);
-	cudaFree(source_idx_dev);
-	cudaFree(source_rate_dev);
+	if(f_source_idx) {
+        free(source_idx);
+        cudaFree(source_idx_dev);
+    }
+	if(f_source_rate) {
+        free(source_rate);
+        cudaFree(source_rate_dev);
+    }
 }
 
 double Simulator::RunSimulation() {
