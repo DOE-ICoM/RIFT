@@ -655,9 +655,9 @@ double Simulator::RunSimulation() {
 	// tf; 
    // while (t < tf) {
 	//updateSources();
-	// checkCudaErrors(cudaMemcpy(source_idx_dev,source_idx,NumSources*sizeof(int),HtoD));
 
 		if (dambreak || rainfall_averaged) {
+            checkCudaErrors(cudaMemcpy(source_idx_dev,source_idx,NumSources*sizeof(int),HtoD));
 			//std::cout << "updating source" << std::endl; 
 			UpdateSource();
 		}
