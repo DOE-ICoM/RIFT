@@ -11,6 +11,7 @@ public:
 
     void ReadSource(std::string filename);
     void InterpolateRate(float sim_time);
+  Source(void) : interpolated_rate(0.0) {};
 };
 
 #endif
