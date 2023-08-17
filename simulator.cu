@@ -267,7 +267,9 @@ void Simulator::InitSimulation(void) {
 			for (j=0; j<NumSources;j++){
 				SetSourceLocation(j,source_X,source_Y);
 			}
-	}
+        } else {
+            NumSources = 0;
+        }
 
 	SetDeviceConstants(grid_config.h_nx, grid_config.h_ny,
                        grid_config.h_dx, grid_config.h_dy, kappa);
