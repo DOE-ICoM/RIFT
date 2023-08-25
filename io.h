@@ -2,18 +2,7 @@
 #define IO_H
 
 #include <string>
-struct GridConfig 
-{
-	int b_nx, b_ny;
-	double b_xll, b_yll;
-	double cellsize_original;
-	double nodata;
-
-	int h_nx, h_ny; 		// abscissa and oridnate grid dimension
-	double h_xll, h_yll;
-	double cellsize;
-	double h_dx, h_dy;		// abscissa and ordinate resolution (m)
-};
+#include "grid_config.hpp"
 
 typedef struct Grid {
 	int num_columns;

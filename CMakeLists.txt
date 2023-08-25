@@ -53,10 +53,11 @@ add_executable(rift
 				# config.h 
 				# grid.h 
 				# grid.cc
-				grid.cu 
+				grid.cu
+                                GridSeries.cu
 				# simulator.h 
 				simulator.cu 
-				main.cc 
+				main.cc
 			)
 
 

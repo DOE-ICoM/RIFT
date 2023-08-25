@@ -11,6 +11,7 @@ const double pi        = 3.14159265358979324;
 extern int GridSize;
 
 extern size_t pitch, pitchBX, pitchBY;
+extern dim3 BlockDim,  GridDim;
 
 #define DtoH cudaMemcpyDeviceToHost
 #define HtoD cudaMemcpyHostToDevice
