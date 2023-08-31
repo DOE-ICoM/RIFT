@@ -71,3 +71,16 @@ if(MPI_FOUND)
 	target_compile_definitions(rift PUBLIC ${MPI_CDEFS})
 	target_link_libraries(rift PUBLIC MPI::MPI_C)
 endif()
+
+# -------------------------------------------------------------
+# GridSeriesTest
+# -------------------------------------------------------------
+add_executable(GridSeriesTest
+  GridSeriesTest.cpp
+  GridSeries.cu
+  io.cc
+  grid.cu
+)
+set_target_properties(GridSeriesTest PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+target_include_directories(GridSeriesTest
+  PUBLIC ${CUDAToolkit_INCLUDE_DIRS} ${CUDA_SAMPLES_INC} )
