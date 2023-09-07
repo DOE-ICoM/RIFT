@@ -222,7 +222,7 @@ void Simulator::InitSimulation(void) {
 		memset(h_h, 0, h_nx*h_ny*sizeof(double));
 		if (h_init) {
 			h_o  = (double*)malloc(b_nx*b_ny*sizeof(double));
-			ReadOriginalGrid(h_o, h_file);
+			SetOriginalGrid(h_o, h_file);
 		}
 	}
 
@@ -242,20 +242,20 @@ void Simulator::InitSimulation(void) {
 		hyetograph_file = hyetograph_file_ss.str();
 
 		hyetograph_o = (double*)malloc(b_nx*b_ny*sizeof(double));
-		ReadOriginalGrid(hyetograph_o, hyetograph_file);
+		SetOriginalGrid(hyetograph_o, hyetograph_file);
 	}
 	
     h_n = (double*)malloc(h_nx*h_ny*sizeof(double));
     memset(h_n, 0, h_nx*h_ny*sizeof(double));
     if (n_gridded) {
         n_o = (double*)malloc(b_nx*b_ny*sizeof(double));
-		ReadOriginalGrid(n_o, n_file);
+		SetOriginalGrid(n_o, n_file);
     } 
 	
 	if (infiltration) {
 		K_o = (double*)malloc(b_nx*b_ny*sizeof(double));
 		h_K = (double*)malloc(h_nx*h_ny*sizeof(double));
-		ReadOriginalGrid(K_o, K_file);
+		SetOriginalGrid(K_o, K_file);
 	}
 
 	
