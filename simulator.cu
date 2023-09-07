@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <memory>
 #include <math.h>
 #include <string>
 #include <sstream>
@@ -17,10 +18,6 @@
 #include "config.h"
 #include "grid.h"
 #include "io.h"
-
-typedef std::numeric_limits<double> dbl;
-typedef std::numeric_limits<double>  flt;
-
 
 // Define device arrays
 double *w, *hu, *hv, *w_old, *hu_old, *hv_old, *dw, *dhu, *dhv, *mx, *my, *BC, *BX,
@@ -462,22 +459,18 @@ void Simulator::ComputeTimestep() {
 	// std::cout << "time step is " << dt << std::endl; 
 }
 
-void writeHeader(std::ofstream &thefile) {
-    thefile.precision(dbl::digits10);
-	thefile << "ncols         " << h_nx - 4          << std::endl;
-	thefile << "nrows         " << h_ny - 4          << std::endl;
-	thefile << "xllcorner     " << h_xll             << std::endl;
-	thefile << "yllcorner     " << h_yll             << std::endl;
-	thefile << "cellsize      " << cellsize_original << std::endl;
-	thefile << "NODATA_value  " << -9999             << std::endl;
-    thefile.precision(flt::digits10);
-}
 
 void Simulator::PrintData(void) {
 	wet_count = 0;
 	if (h_print || check_volume) {
 		checkCudaErrors(cudaMemcpy2D(h_h, h_nx*sizeof(double), h, pitch,
 									 h_nx*sizeof(double), h_ny, DtoH));
+        for (int j = h_ny - 3; j >= 2; j--) {
+            for (int i = 2; i < h_nx-2; i++) {
+                int   id = j*h_nx + i;
+                if (h_h[id] > 0.0) wet_count++;
+            }
+        }
 	}
 	if (save_max) {
 		PrintSummaryData();
@@ -486,24 +479,7 @@ void Simulator::PrintData(void) {
 		std::stringstream filename_h;
 		std::cout<<"Interpolated Flow Rate: "<< hydrograph.interpolated_rate << std:: endl;
 		filename_h << output_file << "/h" << count_print << ".txt";
-		std::ofstream heights;
-		heights.open((filename_h.str()).c_str());
-        if (heights.is_open()) {
-          writeHeader(heights);
-          for (int j = h_ny - 3; j >= 2; j--) {
-              for (int i = 2; i < h_nx-2; i++) {
-                  int   id = j*h_nx + i;
-                  heights << h_h[id] << " ";
-                  if (h_h[id] > 0) wet_count++;
-              }
-              heights << std::endl;
-          }
-        } else {
-            std::string msg(filename_h.str());
-            msg += std::string(": error: cannot open for writing");
-            throw std::runtime_error(msg);
-        }
-		heights.close();
+        writeGrid(filename_h.str(), h_h, h_nx, h_ny);
 	}
 
 	if (check_volume) {
@@ -541,23 +517,7 @@ void Simulator::PrintData(void) {
 									 h_nx*sizeof(double), h_ny, DtoH));
 		std::stringstream filename_q;
 		filename_q << output_file << "/q" << count_print << ".txt";
-		std::ofstream discharge;
-		discharge.open((filename_q.str()).c_str());
-        if (discharge.is_open()) {
-            writeHeader(discharge);
-            for (int j = h_ny - 3; j >= 2; j--) {
-                for (int i = 2; i < h_nx-2; i++) {
-                    int id = j*h_nx + i;
-                    discharge << h_q[id] << " ";
-                }
-                discharge << std::endl;
-            }
-            discharge.close();
-        } else {
-            std::string msg(filename_q.str());
-            msg += std::string(": error: cannot open for writing");
-            throw std::runtime_error(msg);
-        }
+        writeGrid(filename_q.str(), h_q, h_nx, h_ny);
 	}
 
     count_print++;
@@ -565,94 +525,45 @@ void Simulator::PrintData(void) {
 
 void Simulator::PrintSummaryData(void) {
 	if (save_max) {
-		double *h_h_max = (double*)malloc(h_nx*h_ny*sizeof(double));
-		double *h_q_max = (double*)malloc(h_nx*h_ny*sizeof(double));
-		double *h_t_peak = (double*)malloc(h_nx*h_ny * sizeof(double));						// added by Youcan on 20170424
-		double *h_t_dry = (double*)malloc(h_nx*h_ny * sizeof(double));						// added by Youcan on 20170830
-		checkCudaErrors(cudaMemcpy2D(h_h_max,  h_nx*sizeof(double), h_max, pitch,
-									 h_nx*sizeof(double), h_ny, DtoH));
-		checkCudaErrors(cudaMemcpy2D(h_q_max,  h_nx*sizeof(double), q_max,  pitch,
-									 h_nx*sizeof(double), h_ny, DtoH));
-		checkCudaErrors(cudaMemcpy2D(h_t_peak, h_nx * sizeof(double), time_peak, pitch,		// added by Youcan on 20170424
-									 h_nx * sizeof(double), h_ny, DtoH));					// added by Youcan on 20170424
-		checkCudaErrors(cudaMemcpy2D(h_t_dry, h_nx * sizeof(double), time_dry, pitch,		// added by Youcan on 20170830
-									 h_nx * sizeof(double), h_ny, DtoH));					// added by Youcan on 20170830
-		std::ofstream hmax, qmax, tmax, tdry;												// added tmax, tdry by Youcan on 20170908
-		std::stringstream hmax_name, qmax_name, tmax_name, tdry_name;						// added tmax_name, tdry_name by Youcan on 20170908
-		hmax_name << output_file << "/peak_flood_depth.txt";
-		qmax_name << output_file << "/peak_unit_flow.txt";
-		tmax_name << output_file << "/time_to_peak.txt";									// added by Youcan on 20170424
-		tdry_name << output_file << "/time_to_dry.txt";										// added by Youcan on 20170830
-		hmax.open((hmax_name.str()).c_str());
-        if (!hmax.is_open()) {
-            std::string msg(hmax_name.str());
-            msg += ": error: cannot open for writing";
-            throw std::runtime_error(msg);
-        }
-
-		qmax.open((qmax_name.str()).c_str());
-        if (!qmax.is_open()) {
-            std::string msg(qmax_name.str());
-            msg += ": error: cannot open for writing";
-            throw std::runtime_error(msg);
-        }
-
-		tmax.open((tmax_name.str()).c_str());									        if (!tmax.is_open()) {
-            std::string msg(tmax_name.str());
-            msg += ": error: cannot open for writing";
-            throw std::runtime_error(msg);
-        }
+        std::unique_ptr< double[] >
+            h_h_max(new double[h_nx*h_ny]),
+            h_q_max(new double[h_nx*h_ny]),
+            h_t_peak(new double[h_nx*h_ny]),
+            h_t_dry(new double[h_nx*h_ny]);
         
-			// added by Youcan on 20170424
-		tdry.open((tdry_name.str()).c_str());												// added by Youcan on 20170830
-        if (!tdry.is_open()) {
-            std::string msg(tdry_name.str());
-            msg += ": error: cannot open for writing";
-            throw std::runtime_error(msg);
-        }
+		checkCudaErrors(cudaMemcpy2D(&h_h_max[0],  h_nx*sizeof(double), h_max, pitch,
+									 h_nx*sizeof(double), h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(&h_q_max[0],  h_nx*sizeof(double), q_max,  pitch,
+									 h_nx*sizeof(double), h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(&h_t_peak[0], h_nx * sizeof(double), time_peak, pitch,
+									 h_nx * sizeof(double), h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(&h_t_dry[0], h_nx * sizeof(double), time_dry, pitch,
+									 h_nx * sizeof(double), h_ny, DtoH));
 
-		writeHeader(hmax);
-		writeHeader(qmax);
-		writeHeader(tmax);																	// added by Youcan on 20170424
-		writeHeader(tdry);																	// added by Youcan on 20170830
+		std::stringstream out_name;
+		out_name << output_file << "/peak_flood_depth.txt";
+        writeGrid(out_name.str(), &h_h_max[0], h_nx, h_ny);
+        
+		out_name << output_file << "/peak_unit_flow.txt";
+        writeGrid(out_name.str(), &h_q_max[0], h_nx, h_ny);
+        
+		out_name << output_file << "/time_to_peak.txt";
+        writeGrid(out_name.str(), &h_t_peak[0], h_nx, h_ny);
+        
+		out_name << output_file << "/time_to_dry.txt";
+        writeGrid(out_name.str(), &h_t_dry[0], h_nx, h_ny);
 
-
-		for (int j = h_ny - 3; j >= 2; j--) {
-			for (int i = 2; i < h_nx - 2; i++) {
-				int id = j*h_nx + i;
-				hmax << h_h_max[id] << " ";
-				qmax << h_q_max[id] << " ";
-				tmax << h_t_peak[id] << " ";												// added by Youcan on 20170424
-				tdry << h_t_dry[id] << " ";													// added by Youcan on 20170830
-
-			}
-			hmax << std::endl;
-			qmax << std::endl;
-			tmax << std::endl;																// added by Youcan on 20170424
-			tdry << std::endl;																// added by Youcan on 20170830
-
-		}
 	}
 
 	if (save_arrival_time) {
-		double *h_t_wet = (double*)malloc(h_nx*h_ny*sizeof(double));
-		checkCudaErrors(cudaMemcpy2D(h_t_wet,  h_nx*sizeof(double), t_wet,  pitch,
+        std::unique_ptr< double[] > h_t_wet(new double[h_nx*h_ny]);
+		checkCudaErrors(cudaMemcpy2D(&h_t_wet[0],  h_nx*sizeof(double), t_wet,  pitch,
 									 h_nx*sizeof(double), h_ny, DtoH));
 		std::ofstream twet;
 		std::stringstream arrival_name;
 		arrival_name << output_file << "/flood_wave_arrival.txt";
-		
-		twet.open((arrival_name.str()).c_str());
-		writeHeader(twet);
 
-		for (int j = h_ny - 3; j >= 2; j--) {
-			for (int i = 2; i < h_nx - 2; i++) {
-				int id = j*h_nx + i;
-				twet << h_t_wet[id] << " ";
-			}
-			twet << std::endl;
-		}
-		twet.close();
+        writeGrid(arrival_name.str(), &h_t_wet[0], h_nx, h_ny);
 	}
 }
 

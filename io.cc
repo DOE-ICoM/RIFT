@@ -3,10 +3,15 @@
 #include <sstream>
 #include <omp.h>
 #include <iostream>
+#include <iomanip>
+#include <limits>
 #include <stdexcept>
 #include <math.h>
 #include "constants.h"
 #include "io.h"
+
+typedef std::numeric_limits<double> dbl;
+typedef std::numeric_limits<double>  flt;
 
 int    b_nx,  b_ny;
 double b_xll, b_yll;
@@ -365,6 +370,39 @@ void SetOriginalGrid(double *G_original, std::string filename) {
         throw e;
     }
 }
+
+static void writeHeader(std::ofstream &thefile, const int& h_nx, const int& h_ny) {
+    thefile.precision(dbl::digits10);
+	thefile << "ncols         " << h_nx - 4          << std::endl;
+	thefile << "nrows         " << h_ny - 4          << std::endl;
+	thefile << "xllcorner     " << h_xll             << std::endl;
+	thefile << "yllcorner     " << h_yll             << std::endl;
+	thefile << "cellsize      " << cellsize_original << std::endl;
+	thefile << "NODATA_value  " << -9999             << std::endl;
+    thefile.precision(flt::digits10);
+}
+
+void writeGrid(const std::string& fname, double *x, const int& h_nx, const int& h_ny)
+{
+    std::ofstream out;
+    out.open(fname.c_str());
+    writeHeader(out, h_nx, h_ny);
+    if (out.is_open()) {
+        for (int j = h_ny - 3; j >= 2; j--) {
+            for (int i = 2; i < h_nx-2; i++) {
+                int   id = j*h_nx + i;
+                out << x[id] << " ";
+            }
+            out << std::endl;
+        }
+    } else {
+        std::string msg(fname);
+        msg += std::string(": error: cannot open for writing");
+        throw std::runtime_error(msg);
+    }
+    out.close();
+}    
+
 
 void FreeBathymetry(double *&b) {
     free(b);
