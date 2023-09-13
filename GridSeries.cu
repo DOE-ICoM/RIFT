@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-08-25 06:50:26 d3g096
+// Last Change: 2023-09-13 16:11:33 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -39,11 +39,13 @@ GridSeries::GridSeries(const std::string& basename,
   : p_gc(gc),
     p_basename(basename),
     p_scale(scale),
-    p_buffer(new double[gc.b_nx*gc.b_ny]),
-    p_int_buffer(new double[gc.h_nx*gc.h_ny]),
+    p_buffer(new double[gc.b_nx*gc.b_ny]()),
+    p_int_buffer(new double[gc.h_nx*gc.h_ny]()),
     p_in_time(-9999.0), p_in_dt(deltat),
     p_current_dev(NULL)
 {
+  // warning: global variables
+  // Call SetDeviceConstants() first
   size_t width  = (GridDim.x * BlockDim.x) * sizeof(double);
   size_t height = (GridDim.y * BlockDim.y);
 
@@ -82,6 +84,12 @@ GridSeries::p_read_grid(void)
   
   SetOriginalGrid(p_buffer.get(), fname, p_gc);
 
+  std::cout << "Reading from " << fname << " ..." << std::endl;
+
+  std::uninitialized_fill(p_int_buffer.get(),
+                          p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
+                          0.0);
+
   for (int j = 2; j < p_gc.h_ny - 2; j++) {
     for (int i = 2; i < p_gc.h_nx - 2; i++) {
       int jt = j - 2, it = i - 2;
@@ -104,13 +112,19 @@ GridSeries::p_read_grid(void)
 void
 GridSeries::p_update(const double& t)
 {
-  if (p_in_time < 0.0 || t > (p_in_time + p_in_dt)) {
-    if (p_in_time < 0.0) {
+  bool readit(false);
+  
+  if (p_in_time < 0.0) {
       p_in_time = 0.0;
-    } else {
-      p_in_time += p_in_dt;
-    }
+      readit = true;
+  }
 
+  if (t > (p_in_time + p_in_dt)) {
+    readit = true;
+    p_in_time += p_in_dt;
+  }
+
+  if (readit) {
     p_read_grid();
     checkCudaErrors(cudaMemcpy2D(p_current_dev, pitch, p_int_buffer.get(),
                                  p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
@@ -124,8 +138,18 @@ GridSeries::p_update(const double& t)
 double
 GridSeries::p_sum(void) const
 {
-  thrust::device_ptr<double> ptr(p_current_dev);
-  double result = thrust::reduce(ptr, ptr + GridSize);
+  double result(0.0);
+
+  // FIXME: do this on the device, somehow
+  
+  std::unique_ptr<double[]> tmp(new double[p_gc.h_nx*p_gc.h_nx]);
+  checkCudaErrors(cudaMemcpy2D(tmp.get(), p_gc.h_nx*sizeof(double), p_current_dev,
+                               pitch, p_gc.h_nx*sizeof(double), p_gc.h_ny, DtoH));
+
+  for (int i = 0; i < p_gc.h_nx*p_gc.h_nx; ++i) {
+    result += tmp[i];
+  }
+  
   return result;
 }
   

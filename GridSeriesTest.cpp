@@ -3,13 +3,14 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 25, 2023 by Perkins
-// Last Change: 2023-08-25 08:02:53 d3g096
+// Last Change: 2023-09-13 14:22:24 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
 
 #include "constants.h"
 #include "io.h"
+#include "grid.h"
 #include "GridSeries.cuh"
 
 
@@ -25,9 +26,28 @@ main(int argc, char **argv)
   GridConfig gc;
   double *b;
 
+  cudaSetDevice(0);
+
+  if (argc < 3) {
+  }
+
+  g0name = argv[1];
+  basename = argv[2];
+  
   InitBathymetry(b, g0name, gc, true);
 
+  SetDeviceConstants(gc.h_nx, gc.h_ny, gc.h_dx, gc.h_dy, 1.0);
+
   GridSeries g(basename, 1.0, 3600.0, gc);
+
+  double tmax = 86400;
+  double dt = 600;
+
+  for (double t = 0; t <= tmax; t += dt) {
+    g.update(t);
+    std::cout << "Time = " << t << ", "
+              << "Sum = " << g.sum() << std::endl;
+  }    
 
   return 0;
 }
