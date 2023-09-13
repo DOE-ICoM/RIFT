@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-13 16:11:33 d3g096
+// Last Change: 2023-09-13 16:26:58 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -35,13 +35,14 @@
 GridSeries::GridSeries(const std::string& basename,
                        const double& scale,
                        const int& deltat,
+                       const double& tmax,
                        const struct GridConfig& gc)
   : p_gc(gc),
     p_basename(basename),
     p_scale(scale),
     p_buffer(new double[gc.b_nx*gc.b_ny]()),
     p_int_buffer(new double[gc.h_nx*gc.h_ny]()),
-    p_in_time(-9999.0), p_in_dt(deltat),
+    p_in_time(-9999.0), p_in_dt(deltat), p_max_time(tmax),
     p_current_dev(NULL)
 {
   // warning: global variables
@@ -112,24 +113,32 @@ GridSeries::p_read_grid(void)
 void
 GridSeries::p_update(const double& t)
 {
-  bool readit(false);
+  bool sendit(false);
   
   if (p_in_time < 0.0) {
       p_in_time = 0.0;
-      readit = true;
+      p_read_grid();
+      sendit = true;
   }
 
-  if (t > (p_in_time + p_in_dt)) {
-    readit = true;
-    p_in_time += p_in_dt;
-  }
-
-  if (readit) {
+  // after the maximum time is reached, just fill w/ zeroes
+  
+  if (t >= p_max_time) {
+    std::uninitialized_fill(p_int_buffer.get(),
+                            p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
+                            0.0);
+    sendit = true;
+  } else if (t > (p_in_time + p_in_dt)) {
     p_read_grid();
+    p_in_time += p_in_dt;
+    sendit = true;
+  }
+
+  if (sendit) {
     checkCudaErrors(cudaMemcpy2D(p_current_dev, pitch, p_int_buffer.get(),
                                  p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
                                  p_gc.h_ny, HtoD));
-  }
+  } 
 }
 
 // -------------------------------------------------------------

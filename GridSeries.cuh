@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-08-24 14:58:48 d3g096
+// Last Change: 2023-09-13 16:20:19 d3g096
 // -------------------------------------------------------------
 
 
@@ -28,6 +28,7 @@ public:
   GridSeries(const std::string& basename,
              const double& scale,
              const int& deltat,
+             const double& tmax,
              const struct GridConfig& gc);
 
   /// Destructor
@@ -85,6 +86,9 @@ protected:
 
   /// Current input time and step, s
   double p_in_time, p_in_dt;
+
+  /// Maximum input time, s
+  double p_max_time;
 
   /// Pointers to on-device grids
   double *p_current_dev;

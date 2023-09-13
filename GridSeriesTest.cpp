@@ -3,7 +3,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 25, 2023 by Perkins
-// Last Change: 2023-09-13 14:22:24 d3g096
+// Last Change: 2023-09-13 16:26:10 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -38,7 +38,7 @@ main(int argc, char **argv)
 
   SetDeviceConstants(gc.h_nx, gc.h_ny, gc.h_dx, gc.h_dy, 1.0);
 
-  GridSeries g(basename, 1.0, 3600.0, gc);
+  GridSeries g(basename, 1.0, 3600.0, 46800.0, gc);
 
   double tmax = 86400;
   double dt = 600;
