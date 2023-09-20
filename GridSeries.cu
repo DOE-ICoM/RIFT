@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-13 16:26:58 d3g096
+// Last Change: 2023-09-20 12:30:08 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -36,27 +36,36 @@ GridSeries::GridSeries(const std::string& basename,
                        const double& scale,
                        const int& deltat,
                        const double& tmax,
-                       const struct GridConfig& gc)
+                       const struct GridConfig& gc,
+                       double *dev_buf)
   : p_gc(gc),
     p_basename(basename),
     p_scale(scale),
     p_buffer(new double[gc.b_nx*gc.b_ny]()),
     p_int_buffer(new double[gc.h_nx*gc.h_ny]()),
     p_in_time(-9999.0), p_in_dt(deltat), p_max_time(tmax),
-    p_current_dev(NULL)
+    p_current_dev(dev_buf),
+    p_external(true), 
+    p_done(false)
 {
-  // warning: global variables
-  // Call SetDeviceConstants() first
-  size_t width  = (GridDim.x * BlockDim.x) * sizeof(double);
-  size_t height = (GridDim.y * BlockDim.y);
+  if (p_current_dev == NULL) {
+    
+    // warning: global variables
+    // Call SetDeviceConstants() first
+    size_t width  = (GridDim.x * BlockDim.x) * sizeof(double);
+    size_t height = (GridDim.y * BlockDim.y);
+    
+    checkCudaErrors(cudaMallocPitch((void**)&p_current_dev, &pitch, width, height));
+    checkCudaErrors(cudaMemset2D(p_current_dev, pitch, 0, width, height));
 
-  checkCudaErrors(cudaMallocPitch((void**)&p_current_dev, &pitch, width, height));
-  checkCudaErrors(cudaMemset2D(p_current_dev, pitch, 0, width, height));
+    p_external = true;
+  }
 }
 
 GridSeries::~GridSeries(void)
 {
-  cudaFree(p_current_dev);
+  if (!p_external) 
+    cudaFree(p_current_dev);
 }
 
 // -------------------------------------------------------------
@@ -115,8 +124,8 @@ GridSeries::p_update(const double& t)
 {
   bool sendit(false);
   
-  if (p_in_time < 0.0) {
-      p_in_time = 0.0;
+  if (p_in_time <= 0.0) {
+      p_in_time = t;
       p_read_grid();
       sendit = true;
   }
@@ -124,18 +133,22 @@ GridSeries::p_update(const double& t)
   // after the maximum time is reached, just fill w/ zeroes
   
   if (t >= p_max_time) {
-    std::uninitialized_fill(p_int_buffer.get(),
-                            p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
-                            0.0);
-    sendit = true;
-  } else if (t > (p_in_time + p_in_dt)) {
-    p_read_grid();
+    if (!p_done) {
+      std::uninitialized_fill(p_int_buffer.get(),
+                              p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
+                              0.0);
+      sendit = true;
+    }
+    p_done = true;
+  } else if (t >= (p_in_time + p_in_dt)) {
+    std::cout << "Time = " << t << ": ";
     p_in_time += p_in_dt;
+    p_read_grid();
     sendit = true;
   }
 
   if (sendit) {
-    checkCudaErrors(cudaMemcpy2D(p_current_dev, pitch, p_int_buffer.get(),
+    checkCudaErrors(cudaMemcpy2D(p_current_dev, pitch, &(p_int_buffer[0]),
                                  p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
                                  p_gc.h_ny, HtoD));
   } 

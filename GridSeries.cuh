@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-13 16:20:19 d3g096
+// Last Change: 2023-09-20 12:24:50 d3g096
 // -------------------------------------------------------------
 
 
@@ -29,7 +29,8 @@ public:
              const double& scale,
              const int& deltat,
              const double& tmax,
-             const struct GridConfig& gc);
+             const struct GridConfig& gc,
+             double *dev_buf = NULL);
 
   /// Destructor
   ~GridSeries(void);
@@ -90,10 +91,14 @@ protected:
   /// Maximum input time, s
   double p_max_time;
 
-  /// Pointers to on-device grids
+  /// Pointer to on-device grids
   double *p_current_dev;
 
-  
+  /// Was p_current_dev created externally?
+  bool p_external;
+
+  /// This is set when time is past maximum
+  bool p_done;
 };
 
 
