@@ -8,6 +8,7 @@
 #include "source.h"
 #include "grid.h"
 #include "io.h"
+#include "GridSeries.cuh"
 
 class Simulator {
 
@@ -82,7 +83,8 @@ public:
 	Source hyetograph;           // hyetograph describing the rainfall (s, mm/hr)
 	std::string hyetograph_file; // location of the hyetograph file
 
-	bool rainfall_gridded;         // specifies if gridded rainfall occurs 
+	bool rainfall_gridded;         // specifies if gridded rainfall occurs
+        std::unique_ptr<GridSeries> hyetograph_series;
     std::string hyetograph_prefix; // file location/prefix of gridded rainfall data
 	double hyetograph_t;            // initial gridded hyetograph time (s)
 	double hyetograph_tf;           // final gridded hyetograph time (s)

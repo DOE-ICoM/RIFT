@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-20 12:30:08 d3g096
+// Last Change: 2023-09-20 12:38:33 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -141,7 +141,7 @@ GridSeries::p_update(const double& t)
     }
     p_done = true;
   } else if (t >= (p_in_time + p_in_dt)) {
-    std::cout << "Time = " << t << ": ";
+    // std::cout << "Time = " << t << ": ";
     p_in_time += p_in_dt;
     p_read_grid();
     sendit = true;

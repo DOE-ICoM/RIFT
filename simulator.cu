@@ -113,25 +113,9 @@ void Simulator::ReadUserParams(std::string config_file) {
 
 	if (cfg.keyExists("hyetograph_prefix")) {
 		rainfall_gridded  = true;
-		hyetograph_t      = t0;
 		hyetograph_prefix = cfg.getValueOfKey<std::string>("hyetograph_prefix");
 		hyetograph_dt     = cfg.getValueOfKey<double>      ("hyetograph_dt");
 		hyetograph_tf     = cfg.getValueOfKey<double>      ("hyetograph_tf");
-
-		// added by Youcan on 20170831
-		double t_temp = 0.;
-		while (t_temp <= hyetograph_tf) {
-			std::stringstream hyetograph_file_ss;
-			std::string hyetograph_file;
-			hyetograph_file_ss << hyetograph_prefix << "-" << std::setw(3)
-				<< std::setfill('0') << (int)(t_temp / 3600.0)
-				<< ".txt"; //hyetograph_prefix-001.txt	
-			hyetograph_file = hyetograph_file_ss.str();
-			std::ifstream test_exist(hyetograph_file.c_str());
-			if (!test_exist.good()) std::cout << "Hyetograph: " << hyetograph_file << " is not found.";
-			t_temp += hyetograph_dt;
-		}
-
 	} else {
 		rainfall_gridded  = false;
 	}
@@ -217,27 +201,6 @@ void Simulator::InitSimulation(void) {
 		}
 	}
 
-	if (rainfall_gridded) {
-		h_hyetograph = (double*)malloc(grid_config.h_nx * grid_config.h_ny * sizeof(double));
-		f_h_hyetograph = 1;
-		memset(h_hyetograph, 0, grid_config.h_nx * grid_config.h_ny * sizeof(double));
-
-		std::stringstream hyetograph_file_ss;
-		std::string hyetograph_file;
-		//hyetograph_file_ss << hyetograph_prefix << "-" << std::setw(3)					//removed by Youcan on 20170612
-		//				   << std::setfill('0') << 6 + (int)(hyetograph_t / 3600.0)			//removed by Youcan on 20170612
-		//				   << ".asc"; //hyetograph_prefix-001.txt							//removed by Youcan on 20170612
-		hyetograph_file_ss << hyetograph_prefix << "-" << std::setw(3)						//added by Youcan on 20170612
-			<< std::setfill('0') << (int)(hyetograph_t / 3600.0)							//added by Youcan on 20170612
-			<< ".txt"; //hyetograph_prefix-001.txt											//added by Youcan on 20170612
-
-		hyetograph_file = hyetograph_file_ss.str();
-
-		hyetograph_o = (double*)malloc(grid_config.b_nx*grid_config.b_ny*sizeof(double));
-		f_hyetograph_o = 1;
-		SetOriginalGrid(hyetograph_o, hyetograph_file, this->grid_config);
-	}
-	
     h_n = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
 	f_h_n = 1;
     memset(h_n, 0, grid_config.h_nx*grid_config.h_ny*sizeof(double));
@@ -285,8 +248,14 @@ void Simulator::InitSimulation(void) {
 	             save_max, save_arrival_time, psi, dtheta, dev_time_peak, 
 				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
 
-
-
+	if (rainfall_gridded) {
+        hyetograph_series.reset(new GridSeries(hyetograph_prefix, 1.0/3600.0/1000.0,
+                                               hyetograph_dt, hyetograph_tf,
+                                               grid_config,
+                                               dev_hyetograph_gridded_rate));
+        hyetograph_series->update(t0);
+	}
+	
     h_BX = (double*)malloc(grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
 	f_h_BX = 1;
     h_BY = (double*)malloc((grid_config.h_ny+1)*grid_config.h_nx*sizeof(double));
@@ -331,12 +300,6 @@ void Simulator::InitSimulation(void) {
 				
 			}
 
-			if (rainfall_gridded) {
-				h_hyetograph[j*grid_config.h_nx+i] = 0.25f*(hyetograph_o[ur]+hyetograph_o[lr]+
-												hyetograph_o[ll]+hyetograph_o[ul]);
-				h_hyetograph[j*grid_config.h_nx+i] /= (3600.f*1000.f);
-			}
-
 			if (n_gridded) {
 				h_n[j*grid_config.h_nx+i] = 0.25f * (n_o[ur]+n_o[lr]+n_o[ll]+n_o[ul]);
 			}  else {
@@ -359,12 +322,6 @@ void Simulator::InitSimulation(void) {
 		std::cout << "Copying initial Grid to Device" << std::endl;
 		checkCudaErrors(cudaMemcpy2D(dev_h, pitch, h_h, grid_config.h_nx*sizeof(double),
 									 grid_config.h_nx*sizeof(double), grid_config.h_ny, HtoD));
-	}
-
-	if (rainfall_gridded) {
-		checkCudaErrors(cudaMemcpy2D(dev_hyetograph_gridded_rate, pitch, h_hyetograph,
-									 grid_config.h_nx*sizeof(double), grid_config.h_nx*sizeof(double), grid_config.h_ny,
-									 HtoD));
 	}
 
     checkCudaErrors(cudaMemcpy2D(dev_n, pitch, h_n, grid_config.h_nx*sizeof(double),
@@ -425,13 +382,6 @@ void Simulator::UpdateSource(void) {
 		if (check_volume) {
 			V_added += hyetograph.interpolated_rate * dt *
 					   (double)((grid_config.h_nx-4) * (grid_config.h_ny-4));
-		}
-	}
-
-	if (rainfall_gridded) {
-		// Interpolate rainfall rate
-		if (t > hyetograph_t) {
-			hyetograph_t += hyetograph_dt;
 		}
 	}
 }
@@ -693,47 +643,9 @@ double Simulator::RunSimulation() {
 			ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);
 		}
 
-        if (t > hyetograph_tf && rainfall_gridded == true) {
-
-            memset(h_hyetograph, 0, grid_config.h_nx*grid_config.h_ny*sizeof(double));
-            checkCudaErrors(cudaMemcpy2D(dev_hyetograph_gridded_rate, pitch, h_hyetograph,
-                                         grid_config.h_nx*sizeof(double), grid_config.h_nx*sizeof(double), grid_config.h_ny,
-                                         HtoD));
-            rainfall_gridded = false;
-        } else if (t > hyetograph_t && rainfall_gridded == true) {
-            hyetograph_t += hyetograph_dt;
-
-            std::stringstream hyetograph_file_ss;
-            std::string hyetograph_file;
-            //hyetograph_file_ss << hyetograph_prefix << "-" << std::setw(3)					//removed by Youcan on 20170612
-            //                   << std::setfill('0') << (int)(hyetograph_t / 3600.0)			//removed by Youcan on 20170612
-            //                   << ".asc";														//removed by Youcan on 20170612
-			hyetograph_file_ss << hyetograph_prefix << "-" << std::setw(3)						//added by Youcan on 20170612
-				<< std::setfill('0') << (int)(hyetograph_t / 3600.0)							//added by Youcan on 20170612
-				<< ".txt"; //hyetograph_prefix-001.txt											//added by Youcan on 20170612
-
-            hyetograph_file = hyetograph_file_ss.str();
-
-            SetOriginalGrid(hyetograph_o, hyetograph_file, grid_config);
-
-            for (int j = 2; j < grid_config.h_ny - 2; j++) {
-                for (int i = 2; i < grid_config.h_nx - 2; i++) {
-                    int jt = j - 2, it = i - 2;
-
-                    int ll = jt     * grid_config.b_nx + it;     // lower-left bathymetry point
-                    int ul = (jt+1) * grid_config.b_nx + it;     // upper-left bathymetry point
-                    int ur = (jt+1) * grid_config.b_nx + (it+1); // upper-right bathymetry point
-                    int lr = jt     * grid_config.b_nx + (it+1); // lower-right bathymetry point
-
-                    h_hyetograph[j*grid_config.h_nx+i] = 0.25f*(hyetograph_o[ur]+hyetograph_o[lr]+
-                                                    hyetograph_o[ll]+hyetograph_o[ul]);
-					V_added += h_hyetograph[j*grid_config.h_nx + i] / 1000.f;					//added by Youcan on 20170612
-                    h_hyetograph[j*grid_config.h_nx+i] /= (3600.f*1000.f);
-                }
-            }
-            checkCudaErrors(cudaMemcpy2D(dev_hyetograph_gridded_rate, pitch, h_hyetograph,
-                                         grid_config.h_nx*sizeof(double), grid_config.h_nx*sizeof(double), grid_config.h_ny,
-                                         HtoD));
+        if (rainfall_gridded) {
+            hyetograph_series->update(t);
+            V_added += hyetograph_series->sum()*3600.0;
         }
 
 		if (h_print || q_print || check_volume) {
