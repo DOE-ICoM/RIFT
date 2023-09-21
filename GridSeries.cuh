@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-20 12:24:50 d3g096
+// Last Change: 2023-09-21 08:33:07 d3g096
 // -------------------------------------------------------------
 
 
@@ -62,7 +62,7 @@ protected:
   std::string p_grid_name(const int& index) const;
 
   /// Read the next new grid and make ready to use
-  virtual void p_read_grid(void);
+  virtual void p_read_grid(const int& index);
 
   /// Update grid series to specified time (specialized)
   virtual void p_update(const double& t);

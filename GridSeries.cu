@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-20 12:38:33 d3g096
+// Last Change: 2023-09-21 08:47:18 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -87,9 +87,8 @@ GridSeries::p_grid_name(const int& index) const
 // GridSeries::p_read_grid
 // -------------------------------------------------------------
 void
-GridSeries::p_read_grid(void)
+GridSeries::p_read_grid(const int& index)
 {
-  int index(trunc(p_in_time/p_in_dt));
   std::string fname(p_grid_name(index));
   
   SetOriginalGrid(p_buffer.get(), fname, p_gc);
@@ -123,11 +122,13 @@ void
 GridSeries::p_update(const double& t)
 {
   bool sendit(false);
+  int index;
   
-  if (p_in_time <= 0.0) {
-      p_in_time = t;
-      p_read_grid();
-      sendit = true;
+  if (p_in_time < 0.0) {
+    p_in_time = t;
+    index = trunc(p_in_time/p_in_dt);
+    p_read_grid(index);
+    sendit = true;
   }
 
   // after the maximum time is reached, just fill w/ zeroes
@@ -141,9 +142,9 @@ GridSeries::p_update(const double& t)
     }
     p_done = true;
   } else if (t >= (p_in_time + p_in_dt)) {
-    // std::cout << "Time = " << t << ": ";
     p_in_time += p_in_dt;
-    p_read_grid();
+    index = trunc(p_in_time/p_in_dt);
+    p_read_grid(index);
     sendit = true;
   }
 
@@ -157,6 +158,8 @@ GridSeries::p_update(const double& t)
 // -------------------------------------------------------------
 // GridSeries::p_sum
 // -------------------------------------------------------------
+extern __global__ void sumReduce(const size_t& pitch, double *x_dev, double *result);
+
 double
 GridSeries::p_sum(void) const
 {
@@ -164,6 +167,8 @@ GridSeries::p_sum(void) const
 
   // FIXME: do this on the device, somehow
   
+  // sumReduce <<< GridDim, BlockDim >>> (pitch, p_current_dev, &result);
+
   std::unique_ptr<double[]> tmp(new double[p_gc.h_nx*p_gc.h_nx]);
   checkCudaErrors(cudaMemcpy2D(tmp.get(), p_gc.h_nx*sizeof(double), p_current_dev,
                                pitch, p_gc.h_nx*sizeof(double), p_gc.h_ny, DtoH));
