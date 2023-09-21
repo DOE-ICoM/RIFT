@@ -210,6 +210,56 @@ __device__ void getHY(double wp,   double hup,   double hvp,
     my = fmaxf(bp, -bm);
 }
 
+__global__ void gridInterp(const double& factor, const size_t& pitch,
+                           double *x0_dev, double *x1_dev, double *x_dev)
+{
+    int i = blockIdx.x*BLOCK_COLS + threadIdx.x + 2;
+    int j = blockIdx.y*BLOCK_ROWS + threadIdx.y + 2;
+    if (i >= nx || j >= ny) return;
+    double *x0 = getElement(x0_dev, pitch, j, i);
+    double *x1 = getElement(x1_dev, pitch, j, i);
+    double *x = getElement(x_dev, pitch, j, i);
+
+    *x = factor*(*x1 - *x0) + *x0;
+}
+
+__global__ void sumReduce(const size_t& pitch, double *x_dev, double *result)
+{
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+
+    int i = blockIdx.x*BLOCK_COLS + threadIdx.x + 2;
+    int j = blockIdx.y*BLOCK_ROWS + threadIdx.y + 2;
+
+	if (i < 2 || j < 2 || i > nx-3 || j > ny-3) return;
+
+    __shared__ double sum[BLOCK_ROWS][BLOCK_COLS];
+    sum[tidy][tidx] = 0.0;
+    
+    double *x = getElement(x_dev, pitch, j, i);
+    sum[tidy][tidx] += *x;
+
+    __syncthreads();
+
+    if (tidx == 0) {
+        for (int k = 0; k < BLOCK_COLS; k++) {
+            sum[tidy][0] += sum[tidy][k];
+        }
+    }
+
+    __syncthreads();
+
+    if (tidx == 0 && tidy == 0) {
+        for (int l = 0; l < BLOCK_ROWS; l++) {
+            sum[0][0] += sum[l][0];
+        }
+    }
+
+    __syncthreads();
+
+    *result = sum[0][0];
+}
+
 void SetDeviceConstants(int num_columns, int num_rows, double cellxsize,
                         double cellysize, double h_kappa) {
 
