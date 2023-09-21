@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-21 08:33:07 d3g096
+// Last Change: 2023-09-21 09:54:49 d3g096
 // -------------------------------------------------------------
 
 
@@ -38,13 +38,13 @@ public:
   /// Update grid series to specified time
   void update(const double& t)
   {
-    p_update(t);
+    this->p_update(t);
   }
 
   /// Sum the entire current grid
   double sum(void) const
   {
-    return(p_sum());
+    return(this->p_sum());
   }
 
   /// Get the on-device buffer
@@ -102,6 +102,43 @@ protected:
 };
 
 
+// -------------------------------------------------------------
+//  class InterpolatedGridSeries
+// -------------------------------------------------------------
+class InterpolatedGridSeries
+  : public GridSeries
+{
+public:
+
+  /// Default constructor.
+  InterpolatedGridSeries(const std::string& basename,
+                         const double& scale,
+                         const int& deltat,
+                         const double& tmax,
+                         const struct GridConfig& gc);
+
+  /// Destructor
+  ~InterpolatedGridSeries(void);
+  
+protected:
+
+  /// Protected copy constructor to avoid unwanted copies.
+  InterpolatedGridSeries(const InterpolatedGridSeries& old);
+
+  /// Update grid series to specified time (specialized)
+  void p_update(const double& t);
+
+  /// Input time for second grid
+  double p_next_time;
+
+  /// Time plane buffers
+  std::unique_ptr<double[]> p_t0_buffer, p_t1_buffer;
+
+  /// Device time plane buffers
+  //double *p_t0_dev, *p_t1_dev;
+
+
+};
 
 
 #endif

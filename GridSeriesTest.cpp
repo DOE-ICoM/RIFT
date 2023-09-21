@@ -3,7 +3,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 25, 2023 by Perkins
-// Last Change: 2023-09-13 16:26:10 d3g096
+// Last Change: 2023-09-21 09:44:20 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -38,15 +38,22 @@ main(int argc, char **argv)
 
   SetDeviceConstants(gc.h_nx, gc.h_ny, gc.h_dx, gc.h_dy, 1.0);
 
-  GridSeries g(basename, 1.0, 3600.0, 46800.0, gc);
-
+  std::unique_ptr<GridSeries>
+    g(new 
+#ifdef INTERPOLATE
+      InterpolatedGridSeries
+#else
+      GridSeries
+#endif
+      (basename, 1.0, 3600.0, 43200.0, gc));
   double tmax = 86400;
   double dt = 600;
 
   for (double t = 0; t <= tmax; t += dt) {
-    g.update(t);
+    g->update(t);
     std::cout << "Time = " << t << ", "
-              << "Sum = " << g.sum() << std::endl;
+              << "Sum = " << g->sum()
+              << std::endl;
   }    
 
   return 0;

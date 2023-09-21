@@ -75,12 +75,26 @@ endif()
 # -------------------------------------------------------------
 # GridSeriesTest
 # -------------------------------------------------------------
-add_executable(GridSeriesTest
+set(GridSeriesTestSource
   GridSeriesTest.cpp
   GridSeries.cu
   io.cc
   grid.cu
 )
+add_executable(GridSeriesTest ${GridSeriesTestSource})
 set_target_properties(GridSeriesTest PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 target_include_directories(GridSeriesTest
+  PUBLIC ${CUDAToolkit_INCLUDE_DIRS} ${CUDA_SAMPLES_INC} )
+
+# -------------------------------------------------------------
+# InterpolatedGridSeriesTest
+# -------------------------------------------------------------
+add_executable(InterpolatedGridSeriesTest ${GridSeriesTestSource})
+target_compile_definitions(InterpolatedGridSeriesTest
+  PUBLIC -DINTERPOLATE
+)
+set_target_properties(InterpolatedGridSeriesTest
+  PROPERTIES CUDA_SEPARABLE_COMPILATION ON
+)
+target_include_directories(InterpolatedGridSeriesTest
   PUBLIC ${CUDAToolkit_INCLUDE_DIRS} ${CUDA_SAMPLES_INC} )
