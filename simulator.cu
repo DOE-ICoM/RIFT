@@ -120,6 +120,15 @@ void Simulator::ReadUserParams(std::string config_file) {
 		rainfall_gridded  = false;
 	}
 
+    if (cfg.keyExists("surge_prefix")) {
+        surge_gridded = true;
+        surge_prefix = cfg.getValueOfKey<std::string>("surge_prefix");
+        surge_dt = cfg.getValueOfKey<double> ("surge_dt");
+        surge_tf = cfg.getValueOfKey<double> ("surge_tf");
+    } else {
+        surge_gridded = false;
+    }
+
 	if (cfg.keyExists("h_print")) {
 		h_print = cfg.getValueOfKey<bool>("h_print");
 	} else {
@@ -255,6 +264,13 @@ void Simulator::InitSimulation(void) {
                                                dev_hyetograph_gridded_rate));
         hyetograph_series->update(t0);
 	}
+
+    if (surge_gridded) {
+        surge_series.reset(new InterpolatedGridSeries(surge_prefix, 1.0,
+                                                      surge_dt, surge_tf,
+                                                      grid_config));
+        surge_series->update(t0);
+    }
 	
     h_BX = (double*)malloc(grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
 	f_h_BX = 1;

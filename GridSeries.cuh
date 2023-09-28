@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-21 09:54:49 d3g096
+// Last Change: 2023-09-27 07:25:03 d3g096
 // -------------------------------------------------------------
 
 
@@ -99,6 +99,9 @@ protected:
 
   /// This is set when time is past maximum
   bool p_done;
+
+  /// An on-device place to put a summation
+  mutable double *p_result_dev;
 };
 
 

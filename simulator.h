@@ -84,12 +84,21 @@ public:
 	std::string hyetograph_file; // location of the hyetograph file
 
 	bool rainfall_gridded;         // specifies if gridded rainfall occurs
-        std::unique_ptr<GridSeries> hyetograph_series;
-    std::string hyetograph_prefix; // file location/prefix of gridded rainfall data
+  
+  std::unique_ptr<GridSeries> hyetograph_series;
+  std::string hyetograph_prefix; // file location/prefix of gridded rainfall data
 	double hyetograph_t;            // initial gridded hyetograph time (s)
 	double hyetograph_tf;           // final gridded hyetograph time (s)
 	double hyetograph_dt;           // timestep between gridded rainfall data (s)
-	double flow_rate;
+
+  bool surge_gridded; 
+  std::unique_ptr<GridSeries> surge_series;
+  std::string surge_prefix; // file location/prefix of surge data
+	double surge_t;            // initial surge time (s)
+	double surge_tf;           // final sugre time (s)
+	double surge_dt;           // timestep between surgedata (s)
+
+  double flow_rate;
 	double volume_old;
 	struct timeval start_time;     // start time of simulation
 	struct timeval end_time;       // end time of simulation
