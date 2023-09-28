@@ -541,15 +541,20 @@ void Simulator::PrintSummaryData(void) {
 									 h_nx * sizeof(double), h_ny, DtoH));
 
 		std::stringstream out_name;
+
+        out_name.str(std::string());
 		out_name << output_file << "/peak_flood_depth.txt";
         writeGrid(out_name.str(), &h_h_max[0], h_nx, h_ny);
         
+        out_name.str(std::string());
 		out_name << output_file << "/peak_unit_flow.txt";
         writeGrid(out_name.str(), &h_q_max[0], h_nx, h_ny);
         
+        out_name.str(std::string());
 		out_name << output_file << "/time_to_peak.txt";
         writeGrid(out_name.str(), &h_t_peak[0], h_nx, h_ny);
         
+        out_name.str(std::string());
 		out_name << output_file << "/time_to_dry.txt";
         writeGrid(out_name.str(), &h_t_dry[0], h_nx, h_ny);
 
