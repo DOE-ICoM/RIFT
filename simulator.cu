@@ -634,7 +634,7 @@ double Simulator::RunSimulation() {
 			UpdateSource();
 		}
 		//std::cout << "Grow Blocks" << std::endl; 
-		Grow(dev_wet_blocks, dev_active_blocks, dev_hyetograph_gridded_rate, rainfall_gridded);
+		Grow(dev_wet_blocks, dev_active_blocks, dev_hyetograph_gridded_rate, rainfall_gridded, dev_surge_gridded_elev, surge_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
         ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,

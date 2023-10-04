@@ -48,7 +48,9 @@ void Integrate_2(double *w, double *hu, double *hv, double *w_old, double *hu_ol
                  double *F, double *F_old, double *dF, double *K, double *h,
                  double *q, double *h_max, double *q_max, double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources);
 
-void Grow(bool *wet_blocks, int *active_blocks, double *hyetograph_gridded_rate, bool h_rainfall_gridded);
+void Grow(bool *wet_blocks, int *active_blocks,
+          double *hyetograph_gridded_rate, bool h_rainfall_gridded,
+          double *surge_gridded_elev, bool h_surge_gridded);
 
 void ApplyBoundaries(double *w, double *hu, double *hv, double *BC);
 

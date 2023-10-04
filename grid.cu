@@ -731,6 +731,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 
         *dw_ij += S0;
     } else {
+        surge_ij = fmaxf(surge_ij, *BC_ij+epsilon/2.0);
         *dw_ij = (surge_ij - *w_ij)/dt;
     }
 
@@ -1161,9 +1162,38 @@ __global__ void TrackRainfall_k(bool *wet_blocks, int *active_blocks, double *pr
 	}
 }
 
+__global__ void TrackSurge_k(bool *wet_blocks, int *active_blocks, double *surge_elev, size_t pitch)
+{
+   	// already wet set up by other threads
+	if (wet_blocks[abs(active_blocks[blockIdx.x])]) return;
+
+	// Goal: find the global block ID# and set the wet_blocks
+	// sorted active_blocks give the src locations
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+
+	// MJ: Why do these have abs() called? Blocks cant be negative?
+	int blockX = abs(active_blocks[blockIdx.x]) % nBlocksX;
+	int blockY = abs(active_blocks[blockIdx.x]) / nBlocksX;
+
+	int i = blockX * BLOCK_COLS + tidx + 2;
+	int j = blockY * BLOCK_COLS + tidy + 2;
+
+	if (i < 2 || j < 2 || i > nx - 3 || j > ny -3) return;
+
+	// check rain sources
+	double *surge_ij = getElement(surge_elev, pitch, j, i);
+	if (*surge_ij != nodata) {
+		wet_blocks[abs(active_blocks[blockIdx.x])] = true;
+	}
+}
+ 
+
 void Grow(bool *wet_blocks, int *active_blocks,
-          double *hyetograph_gridded_rate, bool h_rainfall_gridded) {
-	if ( h_rainfall_gridded ) {
+          double *hyetograph_gridded_rate, bool h_rainfall_gridded,
+          double *surge_gridded_elev, bool h_surge_gridded) {
+    
+	if ( h_rainfall_gridded || h_surge_gridded ) {
 		thrust::device_ptr<int> dp_active_blocks = thrust::device_pointer_cast(active_blocks);
 		thrust::partition(dp_active_blocks, dp_active_blocks + GridSize, is_negative());
 		nBlocks = thrust::count_if(dp_active_blocks, dp_active_blocks + GridSize, is_negative());
@@ -1172,7 +1202,12 @@ void Grow(bool *wet_blocks, int *active_blocks,
 		// Thrust now checks thrust::partition below if cudaErrors are present if nBlock = 0 then a CUDA 
 		// error is thrown, this just tells the kernel to run when there are valid blocks
 		if (nBlocks > 0) {
-			TrackRainfall_k << < nBlocks, BlockDim >> > (wet_blocks, active_blocks, hyetograph_gridded_rate, pitch);
+            if (h_rainfall_gridded) {
+                TrackRainfall_k << < nBlocks, BlockDim >> > (wet_blocks, active_blocks, hyetograph_gridded_rate, pitch);
+            }
+            if (h_surge_gridded) {
+                TrackSurge_k <<< nBlocks, BlockDim >>> (wet_blocks, active_blocks, surge_gridded_elev, pitch);
+            }
 		}
 	}
 
