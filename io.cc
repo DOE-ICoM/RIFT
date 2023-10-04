@@ -104,8 +104,7 @@ void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config, c
     
         double nodata;
         ifs >> dummy;
-        ifs >> grid_config.nodata; line++;
-        // grid_config.nodata = nodata;
+        ifs >> nodata; line++;
 
         // This array holds the bathymetry points defined by the input DEM 
         b = (double *)malloc(grid_config.b_nx * grid_config.b_ny * sizeof(double ));
@@ -121,7 +120,7 @@ void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config, c
             for (int i = 0; i < grid_config.b_nx; i++) {
                 int id = j*grid_config.b_nx + i;
                 ifs >> value;
-                if (value == grid_config.nodata) {
+                if (value == nodata) {
                     printf("There are NODATA values present in the DEM. Exiting.\n");
                     exit(1);
                 } else {
@@ -317,7 +316,8 @@ Grid *CreateGrid(int num_columns, int num_rows, double xll, double yll,
 	return G;
 }
 
-void SetOriginalGrid(double *G_original, std::string filename, GridConfig& grid_config) {
+void SetOriginalGrid(double *G_original, std::string filename,
+                     GridConfig& grid_config, const bool& nodata_ok) {
     std::ifstream ifs;
 	
     ifs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -360,7 +360,6 @@ void SetOriginalGrid(double *G_original, std::string filename, GridConfig& grid_
         ifs >> dummy;
         double nodata;
         ifs >> nodata; line++;
-        grid_config.nodata = nodata;
 
         double value;
         // Gridded data must be read in a "flipped" fashion
@@ -368,9 +367,13 @@ void SetOriginalGrid(double *G_original, std::string filename, GridConfig& grid_
             for (int i = 0; i < grid_config.b_nx; i++) {
                 int id = j*grid_config.b_nx + i;
                 ifs >> value;
-                if (value == grid_config.nodata) {
-                    printf("There are NODATA values present in the DEM. Exiting.\n");
-                    exit(1);
+                if (value == nodata) {
+                    if (nodata_ok) {
+                        G_original[id] = grid_config.nodata;
+                    } else {
+                        printf("There are NODATA values present in the DEM. Exiting.\n");
+                        exit(1);
+                    }
                 } else {
                     G_original[id] = value;
                 }

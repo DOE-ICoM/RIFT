@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-08-24 11:31:43 d3g096
+// Last Change: 2023-10-04 08:36:33 d3g096
 // -------------------------------------------------------------
 
 
@@ -13,10 +13,10 @@
 
 struct GridConfig 
 {
+  static const double nodata;
   int b_nx, b_ny;
   double b_xll, b_yll;
   double cellsize_original;
-  double nodata;
 
   int h_nx, h_ny; 		// abscissa and oridnate grid dimension
   double h_xll, h_yll;
