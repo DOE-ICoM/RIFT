@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-27 07:25:03 d3g096
+// Last Change: 2023-10-04 08:45:26 d3g096
 // -------------------------------------------------------------
 
 
@@ -61,6 +61,9 @@ protected:
   /// Construct a grid file name
   std::string p_grid_name(const int& index) const;
 
+  /// Method used to interpolate input to internal grid
+  virtual void p_interp(void); 
+
   /// Read the next new grid and make ready to use
   virtual void p_read_grid(const int& index);
 
@@ -102,6 +105,10 @@ protected:
 
   /// An on-device place to put a summation
   mutable double *p_result_dev;
+
+  /// The specific nodata value used for this series (if used)
+  double p_nodata;
+  
 };
 
 

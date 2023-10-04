@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-09-27 08:52:37 d3g096
+// Last Change: 2023-10-04 09:06:50 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -87,17 +87,11 @@ GridSeries::p_grid_name(const int& index) const
 }
 
 // -------------------------------------------------------------
-// GridSeries::p_read_grid
+// GridSeries::p_interp
 // -------------------------------------------------------------
 void
-GridSeries::p_read_grid(const int& index)
+GridSeries::p_interp(void)
 {
-  std::string fname(p_grid_name(index));
-  
-  SetOriginalGrid(p_buffer.get(), fname, p_gc);
-
-  std::cout << "Reading from " << fname << " ..." << std::endl;
-
   std::uninitialized_fill(p_int_buffer.get(),
                           p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
                           0.0);
@@ -115,9 +109,24 @@ GridSeries::p_read_grid(const int& index)
       p_int_buffer[index] = 0.25f*(p_buffer[ur]+p_buffer[lr]+
                                    p_buffer[ll]+p_buffer[ul]);
       p_int_buffer[index] *= p_scale;
-      // std::cout << i << ", " << j << ", " << p_int_buffer[index] << std::endl;
     }
   }
+}
+
+// -------------------------------------------------------------
+// GridSeries::p_read_grid
+// -------------------------------------------------------------
+void
+GridSeries::p_read_grid(const int& index)
+{
+  std::string fname(p_grid_name(index));
+  
+  SetOriginalGrid(p_buffer.get(), fname, p_gc);
+
+  std::cout << "Reading from " << fname << " ..." << std::endl;
+
+  this->p_interp();
+
 }
 
 // -------------------------------------------------------------

@@ -54,6 +54,7 @@ add_executable(rift
 				# grid.h 
 				# grid.cc
 				grid.cu
+                                grid_config.cpp
                                 GridSeries.cu
 				# simulator.h 
 				simulator.cu 
@@ -80,6 +81,7 @@ set(GridSeriesTestSource
   GridSeries.cu
   io.cc
   grid.cu
+  grid_config.cpp
 )
 add_executable(GridSeriesTest ${GridSeriesTestSource})
 set_target_properties(GridSeriesTest PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
