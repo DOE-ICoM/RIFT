@@ -253,7 +253,7 @@ void Simulator::InitSimulation(void) {
 				 dev_hyetograph_gridded_rate, dev_F, dev_F_old, dev_dF, dev_K,
 				 dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dambreak,
 	             rainfall_averaged, rainfall_gridded, infiltration, 
-				 euler_integration, check_volume, h_init, h_print, q_print,
+				 surge_gridded, euler_integration, check_volume, h_init, h_print, q_print,
 	             save_max, save_arrival_time, psi, dtheta, dev_time_peak, 
 				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
 
@@ -269,7 +269,11 @@ void Simulator::InitSimulation(void) {
         surge_series.reset(new InterpolatedGridSeries(surge_prefix, 1.0,
                                                       surge_dt, surge_tf,
                                                       grid_config));
+        surge_series->allow_no_data(true);
         surge_series->update(t0);
+        dev_surge_gridded_elev = surge_series->grid_dev();
+    } else {
+        dev_surge_gridded_elev = NULL;
     }
 	
     h_BX = (double*)malloc(grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
@@ -634,7 +638,8 @@ double Simulator::RunSimulation() {
 		//std::cout << "Compute Fluxes" << std::endl; 
         ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
-		              hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
+		              hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
+                      dev_surge_gridded_elev, dev_F,
 					  dev_F_old, dev_dF, dev_K,source_idx_dev,source_rate_dev,NumSources);
 		ComputeTimestep();
 
@@ -650,7 +655,7 @@ double Simulator::RunSimulation() {
 			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
 						  hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
-						  dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
+						  dev_surge_gridded_elev, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
 			Integrate_2(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 						dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
 						hydrograph.interpolated_rate, dambreak_source_idx,
@@ -662,6 +667,10 @@ double Simulator::RunSimulation() {
         if (rainfall_gridded) {
             hyetograph_series->update(t);
             V_added += hyetograph_series->sum()*3600.0;
+        }
+
+        if (surge_gridded) {
+            surge_series->update(t);
         }
 
 		if (h_print || q_print || check_volume) {

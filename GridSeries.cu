@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-04 09:06:50 d3g096
+// Last Change: 2023-10-04 11:53:55 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -47,6 +47,7 @@ GridSeries::GridSeries(const std::string& basename,
     p_current_dev(dev_buf),
     p_external(true), 
     p_done(false),
+    p_allow_nodata(false),
     p_result_dev(NULL)
 {
   if (p_current_dev == NULL) {
@@ -100,15 +101,26 @@ GridSeries::p_interp(void)
     for (int i = 2; i < p_gc.h_nx - 2; i++) {
       int jt = j - 2, it = i - 2;
 
-      int ll = jt     * p_gc.b_nx + it;     // lower-left bathymetry point
-      int ul = (jt+1) * p_gc.b_nx + it;     // upper-left bathymetry point
-      int ur = (jt+1) * p_gc.b_nx + (it+1); // upper-right bathymetry point
-      int lr = jt     * p_gc.b_nx + (it+1); // lower-right bathymetry point
+      
+      int nnd(0);
+      double vsum(0.0);
+      for (int ni = 0; ni < 2; ++ni) {
+        for (int nj = 0; nj < 2; ++nj) {
+          int idx = (jt + nj) * p_gc.b_nx + (it + nj);
+          if (p_buffer[idx] != p_gc.nodata) {
+            nnd++;
+            vsum += p_buffer[idx];
+          }
+        }
+      }
 
       int index(j*p_gc.h_nx+i);
-      p_int_buffer[index] = 0.25f*(p_buffer[ur]+p_buffer[lr]+
-                                   p_buffer[ll]+p_buffer[ul]);
-      p_int_buffer[index] *= p_scale;
+      if (nnd > 1) {
+        p_int_buffer[index] = vsum/((double)nnd);
+        p_int_buffer[index] *= p_scale;
+      } else {
+        p_int_buffer[index] = p_gc.nodata;
+      }
     }
   }
 }
@@ -121,7 +133,7 @@ GridSeries::p_read_grid(const int& index)
 {
   std::string fname(p_grid_name(index));
   
-  SetOriginalGrid(p_buffer.get(), fname, p_gc);
+  SetOriginalGrid(p_buffer.get(), fname, p_gc, p_allow_nodata);
 
   std::cout << "Reading from " << fname << " ..." << std::endl;
 

@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-04 08:45:26 d3g096
+// Last Change: 2023-10-04 11:27:55 d3g096
 // -------------------------------------------------------------
 
 
@@ -51,6 +51,12 @@ public:
   double *grid_dev(void) const
   {
     return p_current_dev;
+  }
+
+  /// Recognize no data values in input
+  void allow_no_data(const bool& flag)
+  {
+    p_allow_nodata = flag;
   }
 
 protected:
@@ -103,12 +109,12 @@ protected:
   /// This is set when time is past maximum
   bool p_done;
 
-  /// An on-device place to put a summation
+  /// Can the input grid(s) have cells with no data?
+  bool p_allow_nodata;
+  
+  /// An on-device place to put a summation (or other computed value)
   mutable double *p_result_dev;
 
-  /// The specific nodata value used for this series (if used)
-  double p_nodata;
-  
 };
 
 
