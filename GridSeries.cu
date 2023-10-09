@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-04 11:53:55 d3g096
+// Last Change: 2023-10-09 12:15:07 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -95,18 +95,17 @@ GridSeries::p_interp(void)
 {
   std::uninitialized_fill(p_int_buffer.get(),
                           p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
-                          0.0);
+                          (p_allow_nodata ? p_gc.nodata : 0.0));
 
   for (int j = 2; j < p_gc.h_ny - 2; j++) {
     for (int i = 2; i < p_gc.h_nx - 2; i++) {
       int jt = j - 2, it = i - 2;
-
       
       int nnd(0);
       double vsum(0.0);
       for (int ni = 0; ni < 2; ++ni) {
         for (int nj = 0; nj < 2; ++nj) {
-          int idx = (jt + nj) * p_gc.b_nx + (it + nj);
+          int idx = (jt + nj) * p_gc.b_nx + (it + ni);
           if (p_buffer[idx] != p_gc.nodata) {
             nnd++;
             vsum += p_buffer[idx];
@@ -115,9 +114,15 @@ GridSeries::p_interp(void)
       }
 
       int index(j*p_gc.h_nx+i);
-      if (nnd > 1) {
+      if (nnd > 2) {
         p_int_buffer[index] = vsum/((double)nnd);
         p_int_buffer[index] *= p_scale;
+        std::cout << nnd << ": "
+                  << index << ", "
+                  << i << ", "
+                  << j << ": "
+                  << p_int_buffer[index]
+                  << std::endl;
       } else {
         p_int_buffer[index] = p_gc.nodata;
       }
@@ -210,7 +215,9 @@ GridSeries::p_sum(void) const
   result = 0.0;
   for (int j = 2; j < p_gc.h_ny - 2; j++) {
     for (int i = 2; i < p_gc.h_nx - 2; i++) {
-      result += tmp[j*p_gc.h_nx+i];
+      if (tmp[j*p_gc.h_nx+i] != p_gc.nodata) {
+        result += tmp[j*p_gc.h_nx+i];
+      }
       // std::cout << i << ", " << j << ", " << tmp[j*p_gc.h_nx+i] << std::endl;
     }
   }
@@ -252,6 +259,8 @@ InterpolatedGridSeries::p_update(const double& t)
   int index;
 
   // FIXME: Do interpolation on device
+
+  
   
   if (p_in_time < 0.0) {
     
@@ -259,14 +268,14 @@ InterpolatedGridSeries::p_update(const double& t)
       index = trunc(p_in_time/p_in_dt);
       p_read_grid(index);
       std::copy(&(p_int_buffer[0]),
-                &(p_int_buffer[0]) + p_gc.b_nx*p_gc.b_ny,
+                &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
                 &(p_t0_buffer[0]));
 
       p_in_time = index*p_in_dt;
       p_next_time = p_in_time + p_in_dt;
       p_read_grid(index + 1);
       std::copy(&(p_int_buffer[0]),
-                &(p_int_buffer[0]) + p_gc.b_nx*p_gc.b_ny,
+                &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
                 &(p_t1_buffer[0]));
       
   } else if (t >= p_max_time) {
@@ -274,13 +283,13 @@ InterpolatedGridSeries::p_update(const double& t)
     p_in_time = p_next_time;
     p_next_time = p_in_time + p_in_dt;
     std::copy(&(p_t1_buffer[0]),
-              &(p_t1_buffer[0]) + p_gc.b_nx*p_gc.b_ny,
+              &(p_t1_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
               &(p_t0_buffer[0]));
     
   } else if (t >= p_next_time) {
 
     std::copy(&(p_t1_buffer[0]),
-              &(p_t1_buffer[0]) + p_gc.b_nx*p_gc.b_ny,
+              &(p_t1_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
               &(p_t0_buffer[0]));
     
     p_in_time = p_next_time;
@@ -288,31 +297,35 @@ InterpolatedGridSeries::p_update(const double& t)
     index = trunc(p_next_time/p_in_dt);
     p_read_grid(index);
     std::copy(&(p_int_buffer[0]),
-              &(p_int_buffer[0]) + p_gc.b_nx*p_gc.b_ny,
+              &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
               &(p_t1_buffer[0]));
   }
 
   std::uninitialized_fill(p_int_buffer.get(),
                           p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
-                          0.0);
+                          (p_allow_nodata ? p_gc.nodata : 0.0));
 
   double factor((t - p_in_time)/(p_next_time - p_in_time));
-  for (int j = 2; j < p_gc.h_ny - 2; j++) {
-    for (int i = 2; i < p_gc.h_nx - 2; i++) {
+  for (int j = 0; j < p_gc.h_ny; j++) {
+    for (int i = 0; i < p_gc.h_nx; i++) {
       int index(j*p_gc.h_nx+i);
-      p_int_buffer[index] =
-        factor*(p_t1_buffer[index] - p_t0_buffer[index]) +
-        p_t0_buffer[index];
-      // std::cout << i << ", " << j << ", "
-      //           << p_t0_buffer[index] << ", "
-      //           << p_t1_buffer[index] << ", "
-      //           << p_int_buffer[index]
-      //           << std::endl;
+      if ((p_t1_buffer[index] != p_gc.nodata) &&
+          (p_t0_buffer[index] != p_gc.nodata)) {
+        p_int_buffer[index] =
+          factor*(p_t1_buffer[index] - p_t0_buffer[index]) +
+          p_t0_buffer[index];
+        std::cout << i << ", " << j << ", "
+                  << p_t0_buffer[index] << ", "
+                  << p_t1_buffer[index] << ", "
+                  << p_int_buffer[index]
+                  << std::endl;
+      }
     }
   }
 
-  checkCudaErrors(cudaMemcpy2D(p_current_dev, pitch, &(p_int_buffer[0]),
-                               p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
-                               p_gc.h_ny, HtoD));
+  cudaError_t ierr(cudaMemcpy2D(p_current_dev, pitch, &(p_int_buffer[0]),
+                                p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
+                                p_gc.h_ny, HtoD));
 
+  checkCudaErrors(ierr);
 }  
