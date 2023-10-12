@@ -654,8 +654,8 @@ double Simulator::RunSimulation() {
 			
 			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
-						  hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
-						  dev_surge_gridded_elev, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
+						  hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
+						  dev_surge_gridded_elev, dev_F, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
 			Integrate_2(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 						dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
 						hydrograph.interpolated_rate, dambreak_source_idx,
