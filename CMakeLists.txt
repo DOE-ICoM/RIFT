@@ -36,6 +36,9 @@ if(NOT DEFINED CUDA_SAMPLES_INC)
 endif()
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --use_fast_math")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --generate-line-info")
+endif()
 
 # set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -m64; -O3;
 # 										-use_fast_math;
