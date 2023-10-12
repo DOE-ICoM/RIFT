@@ -3,7 +3,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 25, 2023 by Perkins
-// Last Change: 2023-10-09 11:46:36 d3g096
+// Last Change: 2023-10-12 14:50:31 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -36,7 +36,7 @@ main(int argc, char **argv)
   
   InitBathymetry(b, g0name, gc, true);
 
-  SetDeviceConstants(gc.h_nx, gc.h_ny, gc.h_dx, gc.h_dy, 1.0);
+  SetDeviceConstants(gc.h_nx, gc.h_ny, gc.h_dx, gc.h_dy, 1.0, gc.nodata);
 
   std::unique_ptr<GridSeries>
     g(new 

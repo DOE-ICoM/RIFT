@@ -244,7 +244,8 @@ void Simulator::InitSimulation(void) {
         }
 
 	SetDeviceConstants(grid_config.h_nx, grid_config.h_ny,
-                       grid_config.h_dx, grid_config.h_dy, kappa);
+                       grid_config.h_dx, grid_config.h_dy,
+                       kappa, grid_config.nodata);
 
 
 	AllocateGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, 

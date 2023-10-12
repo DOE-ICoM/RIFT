@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-04 11:27:55 d3g096
+// Last Change: 2023-10-12 14:44:07 d3g096
 // -------------------------------------------------------------
 
 
@@ -131,7 +131,8 @@ public:
                          const double& scale,
                          const int& deltat,
                          const double& tmax,
-                         const struct GridConfig& gc);
+                         const struct GridConfig& gc,
+                         double *dev_buf = NULL);
 
   /// Destructor
   ~InterpolatedGridSeries(void);

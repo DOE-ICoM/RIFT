@@ -261,13 +261,14 @@ __global__ void sumReduce(const size_t& pitch, double *x_dev, double *result)
 }
 
 void SetDeviceConstants(int num_columns, int num_rows, double cellxsize,
-                        double cellysize, double h_kappa) {
+                        double cellysize, double h_kappa, double h_nodata) {
 
     cudaMemcpyToSymbol(nx,    &num_columns,    sizeof(int),   0, HtoD);
     cudaMemcpyToSymbol(ny,    &num_rows,       sizeof(int),   0, HtoD);
     cudaMemcpyToSymbol(dx,    &cellxsize, sizeof(double), 0, HtoD);
     cudaMemcpyToSymbol(dy,    &cellysize, sizeof(double), 0, HtoD);
     cudaMemcpyToSymbol(kappa, &h_kappa,         sizeof(double), 0, HtoD);
+    cudaMemcpyToSymbol(nodata,&h_nodata,        sizeof(double), 0, HtoD);
 
 	BlockDim.x = BLOCK_COLS;
 	BlockDim.y = BLOCK_ROWS;

@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-09 12:15:07 d3g096
+// Last Change: 2023-10-12 14:54:04 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -117,12 +117,12 @@ GridSeries::p_interp(void)
       if (nnd > 2) {
         p_int_buffer[index] = vsum/((double)nnd);
         p_int_buffer[index] *= p_scale;
-        std::cout << nnd << ": "
-                  << index << ", "
-                  << i << ", "
-                  << j << ": "
-                  << p_int_buffer[index]
-                  << std::endl;
+        // std::cout << nnd << ": "
+        //           << index << ", "
+        //           << i << ", "
+        //           << j << ": "
+        //           << p_int_buffer[index]
+        //           << std::endl;
       } else {
         p_int_buffer[index] = p_gc.nodata;
       }
@@ -238,8 +238,9 @@ InterpolatedGridSeries::InterpolatedGridSeries(const std::string& basename,
                                                const double& scale,
                                                const int& deltat,
                                                const double& tmax,
-                                               const struct GridConfig& gc)
-  : GridSeries(basename, scale, deltat, tmax, gc),
+                                               const struct GridConfig& gc,
+                                               double *dev_buf)
+  : GridSeries(basename, scale, deltat, tmax, gc, dev_buf),
     p_t0_buffer(new double[gc.h_nx*gc.h_ny]()),
     p_t1_buffer(new double[gc.h_nx*gc.h_ny]())
 {}
@@ -314,11 +315,11 @@ InterpolatedGridSeries::p_update(const double& t)
         p_int_buffer[index] =
           factor*(p_t1_buffer[index] - p_t0_buffer[index]) +
           p_t0_buffer[index];
-        std::cout << i << ", " << j << ", "
-                  << p_t0_buffer[index] << ", "
-                  << p_t1_buffer[index] << ", "
-                  << p_int_buffer[index]
-                  << std::endl;
+        // std::cout << i << ", " << j << ", "
+        //           << p_t0_buffer[index] << ", "
+        //           << p_t1_buffer[index] << ", "
+        //           << p_int_buffer[index]
+        //           << std::endl;
       }
     }
   }
