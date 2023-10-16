@@ -97,6 +97,7 @@ public:
 	double surge_t;            // initial surge time (s)
 	double surge_tf;           // final sugre time (s)
 	double surge_dt;           // timestep between surgedata (s)
+    bool surge_nodata;         // surge data has nodata?
 
   double flow_rate;
 	double volume_old;
@@ -141,7 +142,7 @@ public:
 
 	// Define device arrays
   double *dev_w, *dev_hu, *dev_hv, *dev_w_old, *dev_hu_old, *dev_hv_old, *dev_dw, *dev_dhu, *dev_dhv, *dev_mx, *dev_my, *dev_BC, *dev_BX,
-      *dev_BY, *dev_n, *dev_hyetograph_gridded_rate, *dev_surge_gridded_elev, *dev_F, *dev_F_old, *dev_dF, *dev_K, *dev_h, *dev_q, *dev_h_max,
+      *dev_BY, *dev_n, *dev_hyetograph_gridded_rate, *dev_surge_gridded_depth, *dev_F, *dev_F_old, *dev_dF, *dev_K, *dev_h, *dev_q, *dev_h_max,
       *dev_q_max, *dev_t_wet, *dev_G, *dev_time_peak, *dev_time_dry;
 	bool *dev_wet_blocks;
 	int *dev_active_blocks;

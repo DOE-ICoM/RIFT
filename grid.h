@@ -39,7 +39,7 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
                  double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
-                 double *surge_gridded_elev, 
+                 double *surge_gridded_depth, 
                  double *F, double *F_old, double *dF, double *K, double *h,
                  double *q, double *h_max, double *q_max, double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources, double *t_peak, double *t_dry);	//added time_peak and time_dry by Youcan on 20170908
 
@@ -53,7 +53,7 @@ void Integrate_2(double *w, double *hu, double *hv, double *w_old, double *hu_ol
 
 void Grow(bool *wet_blocks, int *active_blocks,
           double *hyetograph_gridded_rate, bool h_rainfall_gridded,
-          double *surge_gridded_elev, bool h_surge_gridded);
+          double *surge_gridded_depth, bool h_surge_gridded);
 
 void ApplyBoundaries(double *w, double *hu, double *hv, double *BC);
 

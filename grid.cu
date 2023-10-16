@@ -791,7 +791,7 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
                               double hydrograph_rate, int hydrograph_source,
                               double hyetograph_rate,
                               double *hyetograph_gridded_rate,
-                              double *surge_gridded_elev, double *F,
+                              double *surge_gridded_depth, double *F,
                               double *F_old, double *dF, double *K, double *h,
                               double *q, double *h_max, double *q_max,
                               double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources, double *t_peak, double *t_dry) {	//added time_peak and time_dry by Youcan on 20170908
@@ -824,16 +824,13 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 
     // reset elevation of cells with surge assigned
     if (surge_gridded) {
-        double *surge_ij = getElement(surge_gridded_elev, pitch, j, i);
+        double *surge_ij = getElement(surge_gridded_depth, pitch, j, i);
         if (*surge_ij != nodata) {
-            double next_w_ij = (*w_ij) + (*dw_ij)  * dt;
-            double deltaw = 0.0;
-            if (*surge_ij > *BC_ij) {
-                deltaw = *surge_ij - next_w_ij;
-            } else if (*w_ij > *BC_ij) {
-                deltaw = *BC_ij - next_w_ij;
+            if (*surge_ij > 0.0) {
+                double next_h_ij = (*w_ij) + (*dw_ij)  * dt - *BC_ij;
+                double deltaw = *surge_ij - next_h_ij;
+                *dw_ij = deltaw/dt;
             }
-            *dw_ij = deltaw/dt;
         }
     }
 
@@ -927,9 +924,11 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 		}
 
         if (surge_gridded) {
-            double *surge_ij = getElement(surge_gridded_elev, pitch, j, i);
+            double *surge_ij = getElement(surge_gridded_depth, pitch, j, i);
             if (*surge_ij != nodata) {
-				wet[tidy][tidx] = true;
+                if (*surge_ij > 0.0) {
+                    wet[tidy][tidx] = true;
+                }
             }
         }
         
@@ -963,7 +962,7 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
                  double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
-                 double *surge_gridded_elev,
+                 double *surge_gridded_depth,
                  double *F, double *F_old, double *dF, double *K, double *h,
                  double *q, double *h_max, double *q_max, double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources, double *t_peak, double *t_dry) {	//added time_peak and time_dry by Youcan on 20170908
     Integrate_1_k <<< nBlocks, BlockDim >>> (w, hu, hv, w_old, hu_old, hv_old,
@@ -972,7 +971,7 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
 	                                         hydrograph_rate, hydrograph_source,
 	                                         hyetograph_rate,
                                              hyetograph_gridded_rate,
-                                             surge_gridded_elev, F, F_old,
+                                             surge_gridded_depth, F, F_old,
                                              dF, K, h, q, h_max, q_max, t_wet,source_idx_dev, source_rate_dev, numSources, t_peak, t_dry); 	//added time_peak and time_dry by Youcan on 20170908
 }
 
@@ -1211,14 +1210,16 @@ __global__ void TrackSurge_k(bool *wet_blocks, int *active_blocks, double *surge
 	// check rain sources
 	double *surge_ij = getElement(surge_elev, pitch, j, i);
 	if (*surge_ij != nodata) {
-		wet_blocks[abs(active_blocks[blockIdx.x])] = true;
+        if (*surge_ij > 0.0) {
+            wet_blocks[abs(active_blocks[blockIdx.x])] = true;
+        }
 	}
 }
  
 
 void Grow(bool *wet_blocks, int *active_blocks,
           double *hyetograph_gridded_rate, bool h_rainfall_gridded,
-          double *surge_gridded_elev, bool h_surge_gridded) {
+          double *surge_gridded_depth, bool h_surge_gridded) {
     
 	if ( h_rainfall_gridded || h_surge_gridded ) {
 		thrust::device_ptr<int> dp_active_blocks = thrust::device_pointer_cast(active_blocks);
@@ -1233,7 +1234,7 @@ void Grow(bool *wet_blocks, int *active_blocks,
                 TrackRainfall_k << < nBlocks, BlockDim >> > (wet_blocks, active_blocks, hyetograph_gridded_rate, pitch);
             }
             if (h_surge_gridded) {
-                TrackSurge_k <<< nBlocks, BlockDim >>> (wet_blocks, active_blocks, surge_gridded_elev, pitch);
+                TrackSurge_k <<< nBlocks, BlockDim >>> (wet_blocks, active_blocks, surge_gridded_depth, pitch);
             }
 		}
 	}

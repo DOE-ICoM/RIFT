@@ -125,6 +125,11 @@ void Simulator::ReadUserParams(std::string config_file) {
         surge_prefix = cfg.getValueOfKey<std::string>("surge_prefix");
         surge_dt = cfg.getValueOfKey<double> ("surge_dt");
         surge_tf = cfg.getValueOfKey<double> ("surge_tf");
+        if (cfg.keyExists("surge_nodata")) {
+            surge_nodata = cfg.getValueOfKey<bool> ("surge_nodata");
+        } else {
+            surge_nodata = false;
+        }
     } else {
         surge_gridded = false;
     }
@@ -270,11 +275,11 @@ void Simulator::InitSimulation(void) {
         surge_series.reset(new InterpolatedGridSeries(surge_prefix, 1.0,
                                                       surge_dt, surge_tf,
                                                       grid_config));
-        surge_series->allow_no_data(true);
+        surge_series->allow_no_data(surge_nodata);
         surge_series->update(t0);
-        dev_surge_gridded_elev = surge_series->grid_dev();
+        dev_surge_gridded_depth = surge_series->grid_dev();
     } else {
-        dev_surge_gridded_elev = NULL;
+        dev_surge_gridded_depth = NULL;
     }
 	
     h_BX = (double*)malloc(grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
@@ -635,7 +640,7 @@ double Simulator::RunSimulation() {
 			UpdateSource();
 		}
 		//std::cout << "Grow Blocks" << std::endl; 
-		Grow(dev_wet_blocks, dev_active_blocks, dev_hyetograph_gridded_rate, rainfall_gridded, dev_surge_gridded_elev, surge_gridded);
+		Grow(dev_wet_blocks, dev_active_blocks, dev_hyetograph_gridded_rate, rainfall_gridded, dev_surge_gridded_depth, surge_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
         ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
@@ -647,7 +652,7 @@ double Simulator::RunSimulation() {
 					dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
                     hydrograph.interpolated_rate, dambreak_source_idx,
                     hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
-                    dev_surge_gridded_elev, dev_F,
+                    dev_surge_gridded_depth, dev_F,
                     dev_F_old, dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet,source_idx_dev, source_rate_dev,NumSources, dev_time_peak, dev_time_dry);	//added time_peak and time_dry by Youcan on 20170908
 		ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);
 
