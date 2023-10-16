@@ -639,15 +639,15 @@ double Simulator::RunSimulation() {
 		//std::cout << "Compute Fluxes" << std::endl; 
         ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
-		              hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
-                      dev_surge_gridded_elev, dev_F,
+		              hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
 					  dev_F_old, dev_dF, dev_K,source_idx_dev,source_rate_dev,NumSources);
 		ComputeTimestep();
 
 		Integrate_1(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 					dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
                     hydrograph.interpolated_rate, dambreak_source_idx,
-                    hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
+                    hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
+                    dev_surge_gridded_elev, dev_F,
                     dev_F_old, dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet,source_idx_dev, source_rate_dev,NumSources, dev_time_peak, dev_time_dry);	//added time_peak and time_dry by Youcan on 20170908
 		ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);
 
@@ -656,7 +656,7 @@ double Simulator::RunSimulation() {
 			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
 						  hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
-						  dev_surge_gridded_elev, dev_F, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
+						  dev_F, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
 			Integrate_2(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 						dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
 						hydrograph.interpolated_rate, dambreak_source_idx,

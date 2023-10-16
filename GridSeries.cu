@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-12 14:54:04 d3g096
+// Last Change: 2023-10-13 08:43:33 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -20,6 +20,7 @@
 
 #include "constants.h"
 #include "io.h"
+#include "grid.h"
 #include "GridSeries.cuh"
 
 
@@ -48,7 +49,8 @@ GridSeries::GridSeries(const std::string& basename,
     p_external(true), 
     p_done(false),
     p_allow_nodata(false),
-    p_result_dev(NULL)
+    p_result_dev(NULL),
+    p_current_dev_init(true)
 {
   if (p_current_dev == NULL) {
     
@@ -58,7 +60,7 @@ GridSeries::GridSeries(const std::string& basename,
     size_t height = (GridDim.y * BlockDim.y);
     
     checkCudaErrors(cudaMallocPitch((void**)&p_current_dev, &pitch, width, height));
-    checkCudaErrors(cudaMemset2D(p_current_dev, pitch, 0, width, height));
+    p_init_dev();
 
     p_external = true;
   }
@@ -96,6 +98,8 @@ GridSeries::p_interp(void)
   std::uninitialized_fill(p_int_buffer.get(),
                           p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
                           (p_allow_nodata ? p_gc.nodata : 0.0));
+
+  if (!p_current_dev_init) p_init_dev();
 
   for (int j = 2; j < p_gc.h_ny - 2; j++) {
     for (int i = 2; i < p_gc.h_nx - 2; i++) {
@@ -226,6 +230,17 @@ GridSeries::p_sum(void) const
   
   return result;
 }
+
+// -------------------------------------------------------------
+// GridSeries::p_init_dev
+// -------------------------------------------------------------
+void
+GridSeries::p_init_dev()
+{
+  FillGrid(p_current_dev, (p_allow_nodata ? p_gc.nodata : 0.0));
+  p_current_dev_init = true;
+}
+  
   
 // -------------------------------------------------------------
 //  class InterpolatedGridSeries
@@ -261,7 +276,7 @@ InterpolatedGridSeries::p_update(const double& t)
 
   // FIXME: Do interpolation on device
 
-  
+  if (!p_current_dev_init) p_init_dev();
   
   if (p_in_time < 0.0) {
     
@@ -320,6 +335,8 @@ InterpolatedGridSeries::p_update(const double& t)
         //           << p_t1_buffer[index] << ", "
         //           << p_int_buffer[index]
         //           << std::endl;
+      } else {
+        p_int_buffer[index] = p_gc.nodata;
       }
     }
   }

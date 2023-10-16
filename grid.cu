@@ -427,6 +427,20 @@ std::endl;
     checkCudaErrors(cudaMemset(my,            (double) 0,    GridSize*sizeof(double)));
 }
 
+__global__ void FillGrid_k(double *x, size_t pitch, double value)
+{
+    int i = blockIdx.x*blockDim.x + threadIdx.x + 2;
+    int j = blockIdx.y*blockDim.y + threadIdx.y + 2;
+	double *x_ij = getElement(x, pitch, j, i);
+    *x_ij = value;
+}
+
+void FillGrid(double *x, double value)
+{
+    FillGrid_k <<< GridDim, BlockDim >>> (x, pitch, value);
+}
+    
+
 __global__ void InitGrid_k(double *w, double *hu, double  *hv, double *w_old,
                            double *hu_old, double *hv_old, double *BC, double *BX,
                            double *BY, bool *wet_blocks, int *active_blocks,
@@ -491,8 +505,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
                                 double dt, size_t pitch, size_t pitchBX,
                                 size_t pitchBY, double *n, double hydrograph_rate,
                                 int hydrograph_source, double hyetograph_rate,
-                                double *hyetograph_gridded_rate,
-                                double *surge_gridded_elev, double *F,
+                                double *hyetograph_gridded_rate, double *F,
                                 double *F_old, double *dF, double *K,int *source_idx_dev, double *source_rate_dev, long numSources) {
 	int tidx = threadIdx.x;
 	int tidy = threadIdx.y;
@@ -686,56 +699,43 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 		// S2 += C * (*hv_ij);
 	}
 
-    double surge_ij(nodata);
-
-    if (surge_gridded) {
-        surge_ij = *getElement(surge_gridded_elev, pitch, j, i);
+    double S0 = 0.f;
+    
+    if (rainfall_averaged) {
+        S0 += hyetograph_rate;
     }
-
-    if (surge_ij == nodata) {
-
-        double S0 = 0.f;
-
-        if (rainfall_averaged) {
-            S0 += hyetograph_rate;
-        }
-
-        if (rainfall_gridded) {
-            double *hyetograph_gridded_rate_ij =
-                getElement(hyetograph_gridded_rate, pitch, j, i);
-            S0 += *hyetograph_gridded_rate_ij;
-        }
+    
+    if (rainfall_gridded) {
+        double *hyetograph_gridded_rate_ij =
+            getElement(hyetograph_gridded_rate, pitch, j, i);
+        S0 += *hyetograph_gridded_rate_ij;
+    }
 	
-        if (dambreak||numSources>0) {
-            for (int counter = 0; counter < numSources; counter++){
-                S0 = (j*nx + i == source_idx_dev[counter]) ? S0 + source_rate_dev[counter] : S0;
-                //if(S0>0.0f) printf("\nSource %g",S0);
-            }
-            //S0 = (j*nx + i == hydrograph_source) ? S0 + hydrograph_rate : S0;
+    if (dambreak||numSources>0) {
+        for (int counter = 0; counter < numSources; counter++){
+            S0 = (j*nx + i == source_idx_dev[counter]) ? S0 + source_rate_dev[counter] : S0;
+            //if(S0>0.0f) printf("\nSource %g",S0);
         }
-
-        if (infiltration) {
-            double *F_ij  = getElement(F,  pitch, j, i);
-            double *dF_ij = getElement(dF, pitch, j, i);
-            double *K_ij  = getElement(K,  pitch, j, i);
-
-            double p1       = (*K_ij) * dt - 2.f * (*F_ij);
-            double p2       = (*K_ij) * ((*F_ij) + psi*dtheta);
-            double inf_rate = (p1 + sqrtf(p1*p1 + 8.f*p2*dt)) / (2.f*dt);
-
-            inf_rate = (inf_rate > hC / dt) ? hC / dt : inf_rate;
-            inf_rate = (inf_rate > 0.f)     ? inf_rate : 0.f;
-            *dF_ij   = inf_rate;
-
-            S0 -= inf_rate;
-        }
-
-        *dw_ij += S0;
-    } else {
-        surge_ij = fmaxf(surge_ij, *BC_ij+epsilon/2.0);
-        *dw_ij = (surge_ij - *w_ij)/dt;
+        //S0 = (j*nx + i == hydrograph_source) ? S0 + hydrograph_rate : S0;
     }
-
+    
+    if (infiltration) {
+        double *F_ij  = getElement(F,  pitch, j, i);
+        double *dF_ij = getElement(dF, pitch, j, i);
+        double *K_ij  = getElement(K,  pitch, j, i);
+        
+        double p1       = (*K_ij) * dt - 2.f * (*F_ij);
+        double p2       = (*K_ij) * ((*F_ij) + psi*dtheta);
+        double inf_rate = (p1 + sqrtf(p1*p1 + 8.f*p2*dt)) / (2.f*dt);
+        
+        inf_rate = (inf_rate > hC / dt) ? hC / dt : inf_rate;
+        inf_rate = (inf_rate > 0.f)     ? inf_rate : 0.f;
+        *dF_ij   = inf_rate;
+        
+        S0 -= inf_rate;
+    }
+    
+    *dw_ij += S0;
     *dhu_ij += S1;
     *dhv_ij += S2;
 
@@ -772,7 +772,7 @@ void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
                    double *G, int *active_blocks, double dt, double *n,
                    double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate, double *hyetograph_gridded_rate,
-                   double *surge_gridded_elev, double *F, double *F_old, double *dF, double *K, int *source_idx_dev, double *source_rate_dev, long numSources) {
+                   double *F, double *F_old, double *dF, double *K, int *source_idx_dev, double *source_rate_dev, long numSources) {
     ComputeFluxes_k <<< nBlocks, BlockDim >>> (w, hu, hv, dw, dhu, dhv, mx, my, BC,
 	                                           BX, BY, G, active_blocks, dt, pitch,
 	                                           pitchBX, pitchBY, n,
@@ -780,7 +780,6 @@ void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
 	                                           hydrograph_source,
 	                                           hyetograph_rate,
                                                hyetograph_gridded_rate,
-                                               surge_gridded_elev,
 	                                           F, F_old, dF, K, source_idx_dev, source_rate_dev,numSources);
 }
 
@@ -791,7 +790,8 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
                               double t, double dt, size_t pitch,
                               double hydrograph_rate, int hydrograph_source,
                               double hyetograph_rate,
-                              double *hyetograph_gridded_rate, double *F,
+                              double *hyetograph_gridded_rate,
+                              double *surge_gridded_elev, double *F,
                               double *F_old, double *dF, double *K, double *h,
                               double *q, double *h_max, double *q_max,
                               double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources, double *t_peak, double *t_dry) {	//added time_peak and time_dry by Youcan on 20170908
@@ -822,11 +822,28 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 	*hu_old_ij = *hu_ij;
 	*hv_old_ij = *hv_ij;
 
+    // reset elevation of cells with surge assigned
+    if (surge_gridded) {
+        double *surge_ij = getElement(surge_gridded_elev, pitch, j, i);
+        if (*surge_ij != nodata) {
+            double next_w_ij = (*w_ij) + (*dw_ij)  * dt;
+            double deltaw = 0.0;
+            if (*surge_ij > *BC_ij) {
+                deltaw = *surge_ij - next_w_ij;
+            } else if (*w_ij > *BC_ij) {
+                deltaw = *BC_ij - next_w_ij;
+            }
+            *dw_ij = deltaw/dt;
+        }
+    }
+
     *w_ij  += (*dw_ij)  * dt;
     *hu_ij += (*dhu_ij) * dt;
     *hu_ij /= (1.0f - dt*(*G_ij));
     *hv_ij += (*dhv_ij) * dt;
     *hv_ij /= (1.0f - dt*(*G_ij));
+
+    
 
 	double hC = ((*w_ij)-(*BC_ij) > epsilon) ? *w_ij - *BC_ij : 0.f;
 	*w_ij = (hC > epsilon) ? *w_ij : *BC_ij;
@@ -909,6 +926,13 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 			}
 		}
 
+        if (surge_gridded) {
+            double *surge_ij = getElement(surge_gridded_elev, pitch, j, i);
+            if (*surge_ij != nodata) {
+				wet[tidy][tidx] = true;
+            }
+        }
+        
 		__syncthreads();
 
 		if (tidx == 0) {
@@ -939,6 +963,7 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
                  double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
+                 double *surge_gridded_elev,
                  double *F, double *F_old, double *dF, double *K, double *h,
                  double *q, double *h_max, double *q_max, double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources, double *t_peak, double *t_dry) {	//added time_peak and time_dry by Youcan on 20170908
     Integrate_1_k <<< nBlocks, BlockDim >>> (w, hu, hv, w_old, hu_old, hv_old,
@@ -946,7 +971,8 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
 	                                         active_blocks, t, dt, pitch,
 	                                         hydrograph_rate, hydrograph_source,
 	                                         hyetograph_rate,
-                                             hyetograph_gridded_rate, F, F_old,
+                                             hyetograph_gridded_rate,
+                                             surge_gridded_elev, F, F_old,
                                              dF, K, h, q, h_max, q_max, t_wet,source_idx_dev, source_rate_dev, numSources, t_peak, t_dry); 	//added time_peak and time_dry by Youcan on 20170908
 }
 

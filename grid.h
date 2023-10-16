@@ -7,6 +7,8 @@ void SetDeviceConstants(int num_columns, int num_rows,
                         double cellxsize, double cellysize,
                         double h_kappa, double h_nodata);
 
+void FillGrid(double *x, double value);
+
 void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   double *&hu_old, double *&hv_old, double *&dw, double *&dhu,
                   double *&dhv, double *&mx, double *&my, double *&BC, double *&BX, double *&BY,
@@ -30,7 +32,6 @@ void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
                    double *G, int *active_blocks, double dt, double *n,
                    double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate, double *hyetograph_gridded_rate,
-                   double *surge_gridded_elev,
                    double *F, double *F_old, double *dF, double *K,int *source_idx_dev, double *source_rate_dev, long numSources);
 
 void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_old,
@@ -38,6 +39,7 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
                  double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
                  double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate, double *hyetograph_gridded_rate,
+                 double *surge_gridded_elev, 
                  double *F, double *F_old, double *dF, double *K, double *h,
                  double *q, double *h_max, double *q_max, double *t_wet,int *source_idx_dev, double *source_rate_dev, long numSources, double *t_peak, double *t_dry);	//added time_peak and time_dry by Youcan on 20170908
 

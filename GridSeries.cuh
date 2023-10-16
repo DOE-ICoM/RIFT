@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-12 14:44:07 d3g096
+// Last Change: 2023-10-13 07:24:04 d3g096
 // -------------------------------------------------------------
 
 
@@ -57,6 +57,7 @@ public:
   void allow_no_data(const bool& flag)
   {
     p_allow_nodata = flag;
+    p_current_dev_init = false; // changes default value
   }
 
 protected:
@@ -78,6 +79,9 @@ protected:
 
   /// Sum the entire current grid
   virtual double p_sum(void) const;
+
+  /// Initialize the device buffer with default value
+  void p_init_dev(void);
   
   /// Local copy
   struct GridConfig p_gc;
@@ -114,6 +118,9 @@ protected:
   
   /// An on-device place to put a summation (or other computed value)
   mutable double *p_result_dev;
+
+  /// A flag to indicate if the on-device buffer has been initialized
+  bool p_current_dev_init;
 
 };
 
