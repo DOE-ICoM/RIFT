@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 
 project(rift LANGUAGES C CXX CUDA)
 
+option(RIFT_ENABLE_TESTS "Build test programs" NO)
+
 if(NOT CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Release)
 endif()
@@ -94,12 +96,14 @@ target_include_directories(GridSeriesTest
 # -------------------------------------------------------------
 # InterpolatedGridSeriesTest
 # -------------------------------------------------------------
-add_executable(InterpolatedGridSeriesTest ${GridSeriesTestSource})
-target_compile_definitions(InterpolatedGridSeriesTest
-  PUBLIC -DINTERPOLATE
-)
-set_target_properties(InterpolatedGridSeriesTest
-  PROPERTIES CUDA_SEPARABLE_COMPILATION ON
-)
-target_include_directories(InterpolatedGridSeriesTest
-  PUBLIC ${CUDAToolkit_INCLUDE_DIRS} ${CUDA_SAMPLES_INC} )
+if (RIFT_ENABLE_TESTS)
+  add_executable(InterpolatedGridSeriesTest ${GridSeriesTestSource})
+  target_compile_definitions(InterpolatedGridSeriesTest
+    PUBLIC -DINTERPOLATE
+    )
+  set_target_properties(InterpolatedGridSeriesTest
+    PROPERTIES CUDA_SEPARABLE_COMPILATION ON
+    )
+  target_include_directories(InterpolatedGridSeriesTest
+    PUBLIC ${CUDAToolkit_INCLUDE_DIRS} ${CUDA_SAMPLES_INC} )
+endif ()
