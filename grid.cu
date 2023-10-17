@@ -210,8 +210,8 @@ __device__ void getHY(double wp,   double hup,   double hvp,
     my = fmaxf(bp, -bm);
 }
 
-__global__ void gridInterp(const double& factor, const size_t& pitch,
-                           double *x0_dev, double *x1_dev, double *x_dev)
+__global__ void InterpGrid_k(double factor, size_t pitch,
+                             double *x0_dev, double *x1_dev, double *x_dev)
 {
     int i = blockIdx.x*BLOCK_COLS + threadIdx.x + 2;
     int j = blockIdx.y*BLOCK_ROWS + threadIdx.y + 2;
@@ -220,10 +220,25 @@ __global__ void gridInterp(const double& factor, const size_t& pitch,
     double *x1 = getElement(x1_dev, pitch, j, i);
     double *x = getElement(x_dev, pitch, j, i);
 
-    *x = factor*(*x1 - *x0) + *x0;
+    if (*x1 == nodata && *x0 == nodata) {
+        *x = nodata;
+    } else if (*x1 == nodata) {
+        *x = *x0;
+    } else if (*x0 == nodata) {
+        *x = *x1;
+    } else {
+        *x = factor*(*x1 - *x0) + *x0;
+    }
 }
 
-__global__ void sumReduce(const size_t& pitch, double *x_dev, double *result)
+void InterpGrid(double factor,
+                double *x0_dev, double *x1_dev, double *x_dev)
+{
+    InterpGrid_k <<< GridDim, BlockDim >>> (factor, pitch,
+                                            x0_dev, x1_dev,x_dev);
+}
+
+__global__ void sumReduce_k(const size_t& pitch, double *x_dev, double *result)
 {
 	int tidx = threadIdx.x;
 	int tidy = threadIdx.y;

@@ -7,6 +7,7 @@ void SetDeviceConstants(int num_columns, int num_rows,
                         double cellxsize, double cellysize,
                         double h_kappa, double h_nodata);
 
+void InterpGrid(double factor, double *x0_dev, double *x1_dev, double *x_dev);
 void FillGrid(double *x, double value);
 
 void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,

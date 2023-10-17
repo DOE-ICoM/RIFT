@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-13 07:24:04 d3g096
+// Last Change: 2023-10-17 12:55:53 d3g096
 // -------------------------------------------------------------
 
 
@@ -80,8 +80,8 @@ protected:
   /// Sum the entire current grid
   virtual double p_sum(void) const;
 
-  /// Initialize the device buffer with default value
-  void p_init_dev(void);
+  /// Initialize the device buffer(s) with default value
+  virtual void p_init_dev(void);
   
   /// Local copy
   struct GridConfig p_gc;
@@ -152,6 +152,9 @@ protected:
   /// Update grid series to specified time (specialized)
   void p_update(const double& t);
 
+  /// Initialize the device buffer(s) with default value
+  void p_init_dev(void);
+
   /// Input time for second grid
   double p_next_time;
 
@@ -159,9 +162,7 @@ protected:
   std::unique_ptr<double[]> p_t0_buffer, p_t1_buffer;
 
   /// Device time plane buffers
-  //double *p_t0_dev, *p_t1_dev;
-
-
+  double *p_t0_dev, *p_t1_dev;
 };
 
 

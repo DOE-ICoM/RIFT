@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-13 08:43:33 d3g096
+// Last Change: 2023-10-17 13:33:08 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -258,7 +258,15 @@ InterpolatedGridSeries::InterpolatedGridSeries(const std::string& basename,
   : GridSeries(basename, scale, deltat, tmax, gc, dev_buf),
     p_t0_buffer(new double[gc.h_nx*gc.h_ny]()),
     p_t1_buffer(new double[gc.h_nx*gc.h_ny]())
-{}
+{
+    // warning: global variables
+    // Call SetDeviceConstants() first
+    size_t width  = (GridDim.x * BlockDim.x) * sizeof(double);
+    size_t height = (GridDim.y * BlockDim.y);
+    
+    checkCudaErrors(cudaMallocPitch((void**)&p_t0_dev, &pitch, width, height));
+    checkCudaErrors(cudaMallocPitch((void**)&p_t1_dev, &pitch, width, height));
+}
 
 InterpolatedGridSeries::~InterpolatedGridSeries(void)
 {}
@@ -266,9 +274,6 @@ InterpolatedGridSeries::~InterpolatedGridSeries(void)
 // -------------------------------------------------------------
 // InterpolatedGridSeries::p_update
 // -------------------------------------------------------------
-extern __global__ void gridInterp(const double& factor, const size_t& pitch,
-                                  double *x0_dev, double *x1_dev, double *x_dev);
-
 void
 InterpolatedGridSeries::p_update(const double& t)
 {
@@ -283,67 +288,60 @@ InterpolatedGridSeries::p_update(const double& t)
       p_in_time = t;
       index = trunc(p_in_time/p_in_dt);
       p_read_grid(index);
-      std::copy(&(p_int_buffer[0]),
-                &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-                &(p_t0_buffer[0]));
+
+      checkCudaErrors(cudaMemcpy2D(p_t0_dev, pitch, &(p_int_buffer[0]),
+                                 p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
+                                 p_gc.h_ny, HtoD));
+      
+      // std::copy(&(p_int_buffer[0]),
+      //           &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
+      //           &(p_t0_buffer[0]));
 
       p_in_time = index*p_in_dt;
       p_next_time = p_in_time + p_in_dt;
       p_read_grid(index + 1);
-      std::copy(&(p_int_buffer[0]),
-                &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-                &(p_t1_buffer[0]));
+
+      checkCudaErrors(cudaMemcpy2D(p_t1_dev, pitch, &(p_int_buffer[0]),
+                                 p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
+                                 p_gc.h_ny, HtoD));
       
   } else if (t >= p_max_time) {
     
     p_in_time = p_next_time;
     p_next_time = p_in_time + p_in_dt;
-    std::copy(&(p_t1_buffer[0]),
-              &(p_t1_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-              &(p_t0_buffer[0]));
-    
+
+    checkCudaErrors(cudaMemcpy2D(p_t1_dev, pitch, p_t0_dev, pitch,
+                                 p_gc.h_nx*sizeof(double), p_gc.h_ny,
+                                 cudaMemcpyDeviceToDevice));
   } else if (t >= p_next_time) {
 
-    std::copy(&(p_t1_buffer[0]),
-              &(p_t1_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-              &(p_t0_buffer[0]));
+    checkCudaErrors(cudaMemcpy2D(p_t1_dev, pitch, p_t0_dev, pitch,
+                                 p_gc.h_nx*sizeof(double), p_gc.h_ny,
+                                 cudaMemcpyDeviceToDevice));
     
     p_in_time = p_next_time;
     p_next_time = p_in_time + p_in_dt;
     index = trunc(p_next_time/p_in_dt);
     p_read_grid(index);
-    std::copy(&(p_int_buffer[0]),
-              &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-              &(p_t1_buffer[0]));
-  }
 
-  std::uninitialized_fill(p_int_buffer.get(),
-                          p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
-                          (p_allow_nodata ? p_gc.nodata : 0.0));
+    checkCudaErrors(cudaMemcpy2D(p_t1_dev, pitch, &(p_int_buffer[0]),
+                                 p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
+                                 p_gc.h_ny, HtoD));
+
+  }
 
   double factor((t - p_in_time)/(p_next_time - p_in_time));
-  for (int j = 0; j < p_gc.h_ny; j++) {
-    for (int i = 0; i < p_gc.h_nx; i++) {
-      int index(j*p_gc.h_nx+i);
-      if ((p_t1_buffer[index] != p_gc.nodata) &&
-          (p_t0_buffer[index] != p_gc.nodata)) {
-        p_int_buffer[index] =
-          factor*(p_t1_buffer[index] - p_t0_buffer[index]) +
-          p_t0_buffer[index];
-        // std::cout << i << ", " << j << ", "
-        //           << p_t0_buffer[index] << ", "
-        //           << p_t1_buffer[index] << ", "
-        //           << p_int_buffer[index]
-        //           << std::endl;
-      } else {
-        p_int_buffer[index] = p_gc.nodata;
-      }
-    }
-  }
-
-  cudaError_t ierr(cudaMemcpy2D(p_current_dev, pitch, &(p_int_buffer[0]),
-                                p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
-                                p_gc.h_ny, HtoD));
-
-  checkCudaErrors(ierr);
+  InterpGrid(factor, p_t0_dev, p_t1_dev, p_current_dev);
+  
 }  
+
+// -------------------------------------------------------------
+// InterpolatedGridSeries::p_init_dev
+// -------------------------------------------------------------
+void
+InterpolatedGridSeries::p_init_dev()
+{
+  GridSeries::p_init_dev();
+  FillGrid(p_t0_dev, (p_allow_nodata ? p_gc.nodata : 0.0));
+  FillGrid(p_t1_dev, (p_allow_nodata ? p_gc.nodata : 0.0));
+}
