@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-17 13:33:08 d3g096
+// Last Change: 2023-10-18 07:06:49 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -49,7 +49,6 @@ GridSeries::GridSeries(const std::string& basename,
     p_external(true), 
     p_done(false),
     p_allow_nodata(false),
-    p_result_dev(NULL),
     p_current_dev_init(true)
 {
   if (p_current_dev == NULL) {
@@ -70,8 +69,6 @@ GridSeries::~GridSeries(void)
 {
   if (!p_external) 
     cudaFree(p_current_dev);
-  if (p_result_dev != NULL)
-    cudaFree(p_result_dev);
 }
 
 // -------------------------------------------------------------
@@ -193,41 +190,27 @@ GridSeries::p_update(const double& t)
 // -------------------------------------------------------------
 // GridSeries::p_sum
 // -------------------------------------------------------------
-extern __global__ void sumReduce(const size_t& pitch, double *x_dev, double *result);
-
 double
 GridSeries::p_sum(void) const
 {
-  double result(0.0);
-  
-  // if (p_result_dev == NULL) {
-  //   checkCudaErrors(cudaMalloc( (void**)&p_result_dev, sizeof(double)));
-  // }
+  // FIXME: do this on the device
 
-  // sumReduce <<< GridDim, BlockDim >>> (pitch, p_current_dev, p_result_dev);
+  // return (ReduceSumGrid(p_current_dev));
 
-  // cudaMemcpy(&result, p_result_dev, sizeof(double), DtoH);
-
-  // std::cout << "device result = " << result << std::endl;
-
-  // FIXME: do this on the device, somehow
-  
   std::unique_ptr<double[]> tmp(new double[p_gc.h_nx*p_gc.h_ny]);
   checkCudaErrors(cudaMemcpy2D(tmp.get(), p_gc.h_nx*sizeof(double), p_current_dev,
                                pitch, p_gc.h_nx*sizeof(double), p_gc.h_ny, DtoH));
 
-  result = 0.0;
+  double result(0.0);
+
   for (int j = 2; j < p_gc.h_ny - 2; j++) {
     for (int i = 2; i < p_gc.h_nx - 2; i++) {
       if (tmp[j*p_gc.h_nx+i] != p_gc.nodata) {
         result += tmp[j*p_gc.h_nx+i];
       }
-      // std::cout << i << ", " << j << ", " << tmp[j*p_gc.h_nx+i] << std::endl;
     }
   }
 
-  // std::cout << "host result = " << result << std::endl;
-  
   return result;
 }
 

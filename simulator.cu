@@ -672,7 +672,7 @@ double Simulator::RunSimulation() {
 
         if (rainfall_gridded) {
             hyetograph_series->update(t);
-            V_added += hyetograph_series->sum()*3600.0;
+            V_added += hyetograph_series->sum()*dt;
         }
 
         if (surge_gridded) {
