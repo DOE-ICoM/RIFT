@@ -10,6 +10,9 @@
 #include "constants.h"
 #include "io.h"
 
+typedef std::numeric_limits<double> dbl;
+typedef std::numeric_limits<double>  flt;
+
 // int    b_nx,  b_ny;
 // double b_xll, b_yll;
 // double cellsize_original;
@@ -387,26 +390,26 @@ void SetOriginalGrid(double *G_original, std::string filename,
     }
 }
 
-static void writeHeader(std::ofstream &thefile, const int& h_nx, const int& h_ny) {
+static void writeHeader(std::ofstream &thefile, const GridConfig& gc) {
     thefile.precision(dbl::digits10);
-	thefile << "ncols         " << h_nx - 4          << std::endl;
-	thefile << "nrows         " << h_ny - 4          << std::endl;
-	thefile << "xllcorner     " << h_xll             << std::endl;
-	thefile << "yllcorner     " << h_yll             << std::endl;
-	thefile << "cellsize      " << cellsize_original << std::endl;
-	thefile << "NODATA_value  " << -9999             << std::endl;
+	thefile << "ncols         " << gc.h_nx - 4          << std::endl;
+	thefile << "nrows         " << gc.h_ny - 4          << std::endl;
+	thefile << "xllcorner     " << gc.h_xll             << std::endl;
+	thefile << "yllcorner     " << gc.h_yll             << std::endl;
+	thefile << "cellsize      " << gc.cellsize_original << std::endl;
+	thefile << "NODATA_value  " << gc.nodata            << std::endl;
     thefile.precision(flt::digits10);
 }
 
-void writeGrid(const std::string& fname, double *x, const int& h_nx, const int& h_ny)
+void writeGrid(const std::string& fname, double *x, const GridConfig& gc)
 {
     std::ofstream out;
     out.open(fname.c_str());
-    writeHeader(out, h_nx, h_ny);
+    writeHeader(out, gc);
     if (out.is_open()) {
-        for (int j = h_ny - 3; j >= 2; j--) {
-            for (int i = 2; i < h_nx-2; i++) {
-                int   id = j*h_nx + i;
+        for (int j = gc.h_ny - 3; j >= 2; j--) {
+            for (int i = 2; i < gc.h_nx-2; i++) {
+                int   id = j*gc.h_nx + i;
                 out << x[id] << " ";
             }
             out << std::endl;

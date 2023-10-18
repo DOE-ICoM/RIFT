@@ -440,18 +440,6 @@ void Simulator::ComputeTimestep() {
 	// std::cout << "time step is " << dt << std::endl; 
 }
 
-// TODO: Should be part of Simulator class?
-void writeHeader(std::ofstream &thefile, GridConfig& grid_config) {
-    thefile.precision(dbl::digits10);
-	thefile << "ncols         " << grid_config.h_nx - 4          << std::endl;
-	thefile << "nrows         " << grid_config.h_ny - 4          << std::endl;
-	thefile << "xllcorner     " << grid_config.h_xll             << std::endl;
-	thefile << "yllcorner     " << grid_config.h_yll             << std::endl;
-	thefile << "cellsize      " << grid_config.cellsize_original << std::endl;
-	thefile << "NODATA_value  " << -9999             << std::endl;
-    thefile.precision(flt::digits10);
-}
-
 void Simulator::PrintData(void) {
 	dev_wet_count = 0;
 	if (h_print || check_volume) {
@@ -465,7 +453,7 @@ void Simulator::PrintData(void) {
 		std::stringstream filename_h;
 		std::cout<<"Interpolated Flow Rate: "<< hydrograph.interpolated_rate << std:: endl;
 		filename_h << output_file << "/h" << count_print << ".txt";
-        writeGrid(filename_h.str(), h_h, h_nx, h_ny);
+        writeGrid(filename_h.str(), h_h, grid_config);
 	}
 
 	if (check_volume) {
@@ -503,7 +491,7 @@ void Simulator::PrintData(void) {
 									 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
 		std::stringstream filename_q;
 		filename_q << output_file << "/q" << count_print << ".txt";
-        writeGrid(filename_q.str(), h_q, h_nx, h_ny);
+        writeGrid(filename_q.str(), h_q, grid_config);
 	}
 
     count_print++;
@@ -512,49 +500,49 @@ void Simulator::PrintData(void) {
 void Simulator::PrintSummaryData(void) {
 	if (save_max) {
         std::unique_ptr< double[] >
-            h_h_max(new double[h_nx*h_ny]),
-            h_q_max(new double[h_nx*h_ny]),
-            h_t_peak(new double[h_nx*h_ny]),
-            h_t_dry(new double[h_nx*h_ny]);
+            h_h_max(new double[grid_config.h_nx*grid_config.h_ny]),
+            h_q_max(new double[grid_config.h_nx*grid_config.h_ny]),
+            h_t_peak(new double[grid_config.h_nx*grid_config.h_ny]),
+            h_t_dry(new double[grid_config.h_nx*grid_config.h_ny]);
         
-		checkCudaErrors(cudaMemcpy2D(&h_h_max[0],  h_nx*sizeof(double), h_max, pitch,
-									 h_nx*sizeof(double), h_ny, DtoH));
-		checkCudaErrors(cudaMemcpy2D(&h_q_max[0],  h_nx*sizeof(double), q_max,  pitch,
-									 h_nx*sizeof(double), h_ny, DtoH));
-		checkCudaErrors(cudaMemcpy2D(&h_t_peak[0], h_nx * sizeof(double), time_peak, pitch,
-									 h_nx * sizeof(double), h_ny, DtoH));
-		checkCudaErrors(cudaMemcpy2D(&h_t_dry[0], h_nx * sizeof(double), time_dry, pitch,
-									 h_nx * sizeof(double), h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(&h_h_max[0],  grid_config.h_nx*sizeof(double), dev_h_max, pitch,
+									 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(&h_q_max[0],  grid_config.h_nx*sizeof(double), dev_q_max,  pitch,
+									 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(&h_t_peak[0], grid_config.h_nx * sizeof(double), dev_time_peak, pitch,
+									 grid_config.h_nx * sizeof(double), grid_config.h_ny, DtoH));
+		checkCudaErrors(cudaMemcpy2D(&h_t_dry[0], grid_config.h_nx * sizeof(double), dev_time_dry, pitch,
+									 grid_config.h_nx * sizeof(double), grid_config.h_ny, DtoH));
 
 		std::stringstream out_name;
 
         out_name.str(std::string());
 		out_name << output_file << "/peak_flood_depth.txt";
-        writeGrid(out_name.str(), &h_h_max[0], h_nx, h_ny);
+        writeGrid(out_name.str(), &h_h_max[0], grid_config);
         
         out_name.str(std::string());
 		out_name << output_file << "/peak_unit_flow.txt";
-        writeGrid(out_name.str(), &h_q_max[0], h_nx, h_ny);
+        writeGrid(out_name.str(), &h_q_max[0], grid_config);
         
         out_name.str(std::string());
 		out_name << output_file << "/time_to_peak.txt";
-        writeGrid(out_name.str(), &h_t_peak[0], h_nx, h_ny);
+        writeGrid(out_name.str(), &h_t_peak[0], grid_config);
         
         out_name.str(std::string());
 		out_name << output_file << "/time_to_dry.txt";
-        writeGrid(out_name.str(), &h_t_dry[0], h_nx, h_ny);
+        writeGrid(out_name.str(), &h_t_dry[0], grid_config);
 
 	}
 
 	if (save_arrival_time) {
-        std::unique_ptr< double[] > h_t_wet(new double[h_nx*h_ny]);
-		checkCudaErrors(cudaMemcpy2D(&h_t_wet[0],  h_nx*sizeof(double), t_wet,  pitch,
-									 h_nx*sizeof(double), h_ny, DtoH));
+        std::unique_ptr< double[] > h_t_wet(new double[grid_config.h_nx*grid_config.h_ny]);
+		checkCudaErrors(cudaMemcpy2D(&h_t_wet[0],  grid_config.h_nx*sizeof(double), dev_t_wet,  pitch,
+									 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
 		std::ofstream twet;
 		std::stringstream arrival_name;
 		arrival_name << output_file << "/flood_wave_arrival.txt";
 
-        writeGrid(arrival_name.str(), &h_t_wet[0], h_nx, h_ny);
+        writeGrid(arrival_name.str(), &h_t_wet[0], grid_config);
 	}
 }
 

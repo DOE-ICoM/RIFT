@@ -39,6 +39,7 @@ Grid *ReadGrid  (std::string filename);
 Grid *CreateGrid(int num_columns, int num_rows, double xll, double yll,
                  double cellsize, double nodata, double *data);
 
+void writeGrid(const std::string& fname, double *x, const GridConfig& gc);
 
 // void InitBathymetry(double *&b, std::string filename);
 void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config, const bool& square_cells);
