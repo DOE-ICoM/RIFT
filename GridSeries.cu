@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-18 07:06:49 d3g096
+// Last Change: 2023-11-02 08:22:50 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -118,15 +118,7 @@ GridSeries::p_interp(void)
       if (nnd > 2) {
         p_int_buffer[index] = vsum/((double)nnd);
         p_int_buffer[index] *= p_scale;
-        // std::cout << nnd << ": "
-        //           << index << ", "
-        //           << i << ", "
-        //           << j << ": "
-        //           << p_int_buffer[index]
-        //           << std::endl;
-      } else {
-        p_int_buffer[index] = p_gc.nodata;
-      }
+      } 
     }
   }
 }
@@ -253,6 +245,47 @@ InterpolatedGridSeries::InterpolatedGridSeries(const std::string& basename,
 
 InterpolatedGridSeries::~InterpolatedGridSeries(void)
 {}
+
+// -------------------------------------------------------------
+// InterpolatedGridSeries::p_interp
+//
+// As opposed to GridSeries::p_interp, this does not allow a valid
+// value in a computational cell unless *all four* bathymetry cells
+// are valid.  Currently, this applies only to surge. 
+// -------------------------------------------------------------
+void
+InterpolatedGridSeries::p_interp()
+{
+  std::uninitialized_fill(p_int_buffer.get(),
+                          p_int_buffer.get() + p_gc.h_nx*p_gc.h_ny,
+                          (p_allow_nodata ? p_gc.nodata : 0.0));
+
+  if (!p_current_dev_init) p_init_dev();
+
+  for (int j = 2; j < p_gc.h_ny - 2; j++) {
+    for (int i = 2; i < p_gc.h_nx - 2; i++) {
+      int jt = j - 2, it = i - 2;
+      
+      int nnd(0);
+      double vsum(0.0);
+      for (int ni = 0; ni < 2; ++ni) {
+        for (int nj = 0; nj < 2; ++nj) {
+          int idx = (jt + nj) * p_gc.b_nx + (it + ni);
+          if (p_buffer[idx] != p_gc.nodata) {
+            nnd++;
+            vsum += p_buffer[idx];
+          }
+        }
+      }
+
+      int index(j*p_gc.h_nx+i);
+      if (nnd == 4) {
+        p_int_buffer[index] = vsum/((double)nnd);
+        p_int_buffer[index] *= p_scale;
+      }
+    }
+  }
+}
 
 // -------------------------------------------------------------
 // InterpolatedGridSeries::p_update

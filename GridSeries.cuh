@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-10-17 12:55:53 d3g096
+// Last Change: 2023-11-02 08:15:13 d3g096
 // -------------------------------------------------------------
 
 
@@ -151,6 +151,9 @@ protected:
 
   /// Update grid series to specified time (specialized)
   void p_update(const double& t);
+
+  /// Method used to interpolate input to internal grid
+  void p_interp(void); 
 
   /// Initialize the device buffer(s) with default value
   void p_init_dev(void);
