@@ -264,10 +264,11 @@ void Simulator::InitSimulation(void) {
 				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
 
 	if (rainfall_gridded) {
-        hyetograph_series.reset(new GridSeries(hyetograph_prefix, 1.0/3600.0/1000.0,
-                                               hyetograph_dt, hyetograph_tf,
-                                               grid_config,
-                                               dev_hyetograph_gridded_rate));
+        hyetograph_series.reset(new HyetographGridSeries(hyetograph_prefix,
+                                                         hyetograph_dt,
+                                                         hyetograph_tf,
+                                                         grid_config,
+                                                         dev_hyetograph_gridded_rate));
         hyetograph_series->update(t0);
 	}
 

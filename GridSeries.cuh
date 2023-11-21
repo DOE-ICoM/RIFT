@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-11-02 08:15:13 d3g096
+// Last Change: 2023-11-21 13:27:32 d3g096
 // -------------------------------------------------------------
 
 
@@ -82,6 +82,9 @@ protected:
 
   /// Initialize the device buffer(s) with default value
   virtual void p_init_dev(void);
+
+  /// Send the map to the device
+  virtual void p_copy_to_dev(void);
   
   /// Local copy
   struct GridConfig p_gc;
@@ -124,6 +127,45 @@ protected:
 
 };
 
+// -------------------------------------------------------------
+// class HyetographGridSeries
+//
+// A GridSeries specialized for rainfall maps. The rainfall map is
+// constant through the time between input maps. The rate map used is
+// that from the *next* map input time.  So, map input is handled
+// sightly different than GridSeries.  Also, the scale (converts mm/hr
+// to m/s) should not be set externally.
+// -------------------------------------------------------------
+class HyetographGridSeries
+  : public GridSeries
+{
+public:
+
+  /// Default constructor.
+  HyetographGridSeries(const std::string& basename,
+                       const int& deltat,
+                       const double& tmax,
+                       const struct GridConfig& gc,
+                       double *dev_buf = NULL);
+
+  /// Destructor
+  ~HyetographGridSeries(void);
+
+protected:
+
+  /// Protected copy constructor to avoid unwanted copies.
+  HyetographGridSeries(const HyetographGridSeries& old);
+
+  /// Update grid series to specified time (specialized)
+  void p_update(const double& t);
+
+  /// Sum the entire current grid
+  double p_sum(void) const;
+
+  /// Cache of current map's sum
+  double p_sum_cache;
+
+};
 
 // -------------------------------------------------------------
 //  class InterpolatedGridSeries

@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-11-02 08:22:50 d3g096
+// Last Change: 2023-11-21 13:24:03 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -173,9 +173,7 @@ GridSeries::p_update(const double& t)
   }
 
   if (sendit) {
-    checkCudaErrors(cudaMemcpy2D(p_current_dev, pitch, &(p_int_buffer[0]),
-                                 p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
-                                 p_gc.h_ny, HtoD));
+    this->p_copy_to_dev();
   } 
 }
 
@@ -215,8 +213,77 @@ GridSeries::p_init_dev()
   FillGrid(p_current_dev, (p_allow_nodata ? p_gc.nodata : 0.0));
   p_current_dev_init = true;
 }
+
+// -------------------------------------------------------------
+// GridSeries::p_copy_to_dev
+// -------------------------------------------------------------
+void
+GridSeries::p_copy_to_dev()
+{
+  checkCudaErrors(cudaMemcpy2D(p_current_dev, pitch, &(p_int_buffer[0]),
+                               p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
+                               p_gc.h_ny, HtoD));
+}
+
+// -------------------------------------------------------------
+//  class HyetographGridSeries
+// -------------------------------------------------------------
+
+// -------------------------------------------------------------
+// HyetographGridSeries:: constructors / destructor
+// -------------------------------------------------------------
+HyetographGridSeries::HyetographGridSeries(const std::string& basename,
+                                           const int& deltat,
+                                           const double& tmax,
+                                           const struct GridConfig& gc,
+                                           double *dev_buf)
+  : GridSeries(basename,
+               1.0/3600.0/1000.0, // converts mm/hr to m/s
+               deltat, tmax, gc, dev_buf),
+    p_sum_cache(0.0)
+    
+{}
+
+HyetographGridSeries::~HyetographGridSeries(void)
+{}
+
+// -------------------------------------------------------------
+// HyetographGridSeries::p_update
+// -------------------------------------------------------------
+void
+HyetographGridSeries::p_update(const double& t)
+{
+  int index;
   
-  
+  if (p_in_time < 0.0) {
+    GridSeries::p_update(t);
+  }
+
+  // rainfall between t and t + p_in_dt should be set from the map at
+  // t + p_in_dt
+
+  // Also, ince the hydrograph does not change over the input times,
+  // the sum can be computed and cached
+  if (t >= p_max_time) {
+    GridSeries::p_update(t);
+  } else if (t > (p_in_time)) {
+    p_in_time += p_in_dt;
+    index = trunc(p_in_time/p_in_dt);
+    p_read_grid(index);
+    this->p_copy_to_dev();
+    p_sum_cache = GridSeries::p_sum();
+  }
+}
+
+// -------------------------------------------------------------
+// HyetographGridSeries::p_sum
+// -------------------------------------------------------------
+double
+HyetographGridSeries::p_sum(void) const
+{
+  return p_sum_cache;
+}
+
 // -------------------------------------------------------------
 //  class InterpolatedGridSeries
 // -------------------------------------------------------------
