@@ -103,7 +103,6 @@ public:
 	double surge_t;            // initial surge time (s)
 	double surge_tf;           // final sugre time (s)
 	double surge_dt;           // timestep between surgedata (s)
-    bool surge_nodata;         // surge data has nodata?
 
   double flow_rate;
 	double volume_old;

@@ -133,11 +133,6 @@ void Simulator::ReadUserParams(std::string config_file) {
         surge_prefix = cfg.getValueOfKey<std::string>("surge_prefix");
         surge_dt = cfg.getValueOfKey<double> ("surge_dt");
         surge_tf = cfg.getValueOfKey<double> ("surge_tf");
-        if (cfg.keyExists("surge_nodata")) {
-            surge_nodata = cfg.getValueOfKey<bool> ("surge_nodata");
-        } else {
-            surge_nodata = false;
-        }
     } else {
         surge_gridded = false;
     }
@@ -285,7 +280,8 @@ void Simulator::InitSimulation(void) {
         surge_series.reset(new InterpolatedGridSeries(surge_prefix, 1.0,
                                                       surge_dt, surge_tf,
                                                       grid_config));
-        surge_series->allow_no_data(surge_nodata);
+        // surge data must be surrounded by nodata values
+        surge_series->allow_no_data(true);
         surge_series->update(t0);
         dev_surge_gridded_depth = surge_series->grid_dev();
     } else {
@@ -467,11 +463,14 @@ void Simulator::PrintData(void) {
 	if (h_print) {
 		std::stringstream filename_h;
 		std::cout<<"Interpolated Flow Rate: "<< hydrograph.interpolated_rate << std:: endl;
-        std::cout << "Drain Rate: " << drain.interpolated_rate << std::endl;
 		filename_h << output_file << "/h" << count_print << ".txt";
         writeGrid(filename_h.str(), h_h, grid_config);
 	}
 
+    if (drain_enabled) {
+        std::cout << "Drain Rate: " << drain.interpolated_rate << std::endl;
+    }
+    
 	if (check_volume) {
 		V_computed = 0.f;
 
