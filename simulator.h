@@ -83,6 +83,12 @@ public:
 	Source hyetograph;           // hyetograph describing the rainfall (s, mm/hr)
 	std::string hyetograph_file; // location of the hyetograph file
 
+    bool drain_enabled;         // specifies if system-averaged
+                                // drain (reverse of
+                                // rainfall_averaged) occurs
+    Source drain;
+    std::string drain_file;
+
 	bool rainfall_gridded;         // specifies if gridded rainfall occurs
   
   std::unique_ptr<GridSeries> hyetograph_series;

@@ -111,6 +111,14 @@ void Simulator::ReadUserParams(std::string config_file) {
 		rainfall_averaged = false;
 	}
 
+	if (cfg.keyExists("drain")) {
+        drain_enabled = true;
+        drain_file = cfg.getValueOfKey<std::string>("drain");
+        drain.ReadSource(drain_file);
+    } else {
+        drain_enabled = false;
+    }
+
 	if (cfg.keyExists("hyetograph_prefix")) {
 		rainfall_gridded  = true;
 		hyetograph_prefix = cfg.getValueOfKey<std::string>("hyetograph_prefix");
@@ -118,7 +126,7 @@ void Simulator::ReadUserParams(std::string config_file) {
 		hyetograph_tf     = cfg.getValueOfKey<double>      ("hyetograph_tf");
 	} else {
 		rainfall_gridded  = false;
-	}
+	} 
 
     if (cfg.keyExists("surge_prefix")) {
         surge_gridded = true;
@@ -258,7 +266,8 @@ void Simulator::InitSimulation(void) {
                  dev_wet_blocks, dev_active_blocks, dev_n, 
 				 dev_hyetograph_gridded_rate, dev_F, dev_F_old, dev_dF, dev_K,
 				 dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dambreak,
-	             rainfall_averaged, rainfall_gridded, infiltration, 
+	             rainfall_averaged, drain_enabled,
+                 rainfall_gridded, infiltration, 
 				 surge_gridded, euler_integration, check_volume, h_init, h_print, q_print,
 	             save_max, save_arrival_time, psi, dtheta, dev_time_peak, 
 				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
@@ -411,6 +420,11 @@ void Simulator::UpdateSource(void) {
 					   (double)((grid_config.h_nx-4) * (grid_config.h_ny-4));
 		}
 	}
+
+    if (drain_enabled) {
+        drain.InterpolateRate(t);
+        drain.interpolated_rate /= (3600.f*1000.f);
+    }        
 }
 
 void Simulator::ComputeTimestep() {
@@ -453,6 +467,7 @@ void Simulator::PrintData(void) {
 	if (h_print) {
 		std::stringstream filename_h;
 		std::cout<<"Interpolated Flow Rate: "<< hydrograph.interpolated_rate << std:: endl;
+        std::cout << "Drain Rate: " << drain.interpolated_rate << std::endl;
 		filename_h << output_file << "/h" << count_print << ".txt";
         writeGrid(filename_h.str(), h_h, grid_config);
 	}
@@ -623,7 +638,7 @@ double Simulator::RunSimulation() {
    // while (t < tf) {
 	//updateSources();
 
-		if (dambreak || rainfall_averaged) {
+		if (dambreak || rainfall_averaged || drain_enabled) {
             checkCudaErrors(cudaMemcpy(source_idx_dev,source_idx,NumSources*sizeof(int),HtoD));
 			//std::cout << "updating source" << std::endl; 
 			UpdateSource();
@@ -633,7 +648,8 @@ double Simulator::RunSimulation() {
 		//std::cout << "Compute Fluxes" << std::endl; 
         ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
-		              hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
+		              hyetograph.interpolated_rate, drain.interpolated_rate,
+                      dev_hyetograph_gridded_rate, dev_F,
 					  dev_F_old, dev_dF, dev_K,source_idx_dev,source_rate_dev,NumSources);
 		ComputeTimestep();
 
@@ -649,7 +665,8 @@ double Simulator::RunSimulation() {
 			
 			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
-						  hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
+						  hyetograph.interpolated_rate, drain.interpolated_rate,
+                          dev_hyetograph_gridded_rate,
 						  dev_F, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
 			Integrate_2(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 						dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
