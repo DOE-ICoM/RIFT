@@ -112,11 +112,11 @@ void Simulator::ReadUserParams(std::string config_file) {
 	}
 
 	if (cfg.keyExists("drain")) {
-        drain_enabled = true;
+        drain_averaged = true;
         drain_file = cfg.getValueOfKey<std::string>("drain");
         drain.ReadSource(drain_file);
     } else {
-        drain_enabled = false;
+        drain_averaged = false;
     }
 
 	if (cfg.keyExists("hyetograph_prefix")) {
@@ -261,7 +261,7 @@ void Simulator::InitSimulation(void) {
                  dev_wet_blocks, dev_active_blocks, dev_n, 
 				 dev_hyetograph_gridded_rate, dev_F, dev_F_old, dev_dF, dev_K,
 				 dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dambreak,
-	             rainfall_averaged, drain_enabled,
+	             rainfall_averaged, drain_averaged,
                  rainfall_gridded, infiltration, 
 				 surge_gridded, euler_integration, check_volume, h_init, h_print, q_print,
 	             save_max, save_arrival_time, psi, dtheta, dev_time_peak, 
@@ -417,7 +417,7 @@ void Simulator::UpdateSource(void) {
 		}
 	}
 
-    if (drain_enabled) {
+    if (drain_averaged) {
         drain.InterpolateRate(t);
         drain.interpolated_rate /= (3600.f*1000.f);
     }        
@@ -467,7 +467,7 @@ void Simulator::PrintData(void) {
         writeGrid(filename_h.str(), h_h, grid_config);
 	}
 
-    if (drain_enabled) {
+    if (drain_averaged) {
         std::cout << "Drain Rate: " << drain.interpolated_rate << std::endl;
     }
     
@@ -637,7 +637,7 @@ double Simulator::RunSimulation() {
    // while (t < tf) {
 	//updateSources();
 
-		if (dambreak || rainfall_averaged || drain_enabled) {
+		if (dambreak || rainfall_averaged || drain_averaged) {
             checkCudaErrors(cudaMemcpy(source_idx_dev,source_idx,NumSources*sizeof(int),HtoD));
 			//std::cout << "updating source" << std::endl; 
 			UpdateSource();
