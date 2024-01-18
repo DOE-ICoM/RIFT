@@ -19,7 +19,7 @@
 #define BLOCK_COLS 16
 
 __constant__ bool  dambreak, rainfall_averaged, rainfall_gridded, infiltration;
-__constant__ bool  drain;
+__constant__ bool  drain_averaged, drain_gridded;
 __constant__ bool  surge_gridded, euler_integration, check_volume;
 __constant__ bool  h_init, h_print, q_print, save_max, save_arrival_time;
 __constant__ int   nx, ny, nBlocksX, nBlocksY;
@@ -273,8 +273,8 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   double *&hyetograph_gridded_rate, double *&F, double *&F_old,
                   double *&dF, double *&K, double *&h, double *&q, double *&h_max,
                   double *&q_max, double *&t_wet, bool h_dambreak,
-                  bool h_rainfall_averaged, bool h_drain,
-                  bool h_rainfall_gridded, bool h_infiltration,
+                  bool h_rainfall_averaged, bool h_drain_averaged,
+                  bool h_rainfall_gridded, bool h_drain_gridded, bool h_infiltration,
                   bool h_surge_gridded, bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
                   bool h_q_print, bool h_save_max, bool h_save_arrival_time,
@@ -284,15 +284,16 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
 //100000001000
 
 
-	std::cout << h_dambreak << h_rainfall_averaged << h_drain << h_rainfall_gridded <<
+	std::cout << h_dambreak << h_rainfall_averaged << h_drain_averaged << h_rainfall_gridded <<
 h_infiltration << h_euler_integration << h_check_volume <<
 h_h_init << h_h_print << h_q_print << h_save_max << h_save_arrival_time <<
 std::endl;
 
     cudaMemcpyToSymbol(dambreak,          &h_dambreak,          sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(rainfall_averaged, &h_rainfall_averaged, sizeof(bool), 0, HtoD);
-    cudaMemcpyToSymbol(drain,             &h_drain,             sizeof(bool), 0, HtoD);
+    cudaMemcpyToSymbol(drain_averaged,    &h_drain_averaged,    sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(rainfall_gridded,  &h_rainfall_gridded,  sizeof(bool), 0, HtoD);
+    cudaMemcpyToSymbol(drain_gridded,     &h_drain_gridded,     sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(infiltration,      &h_infiltration,      sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(surge_gridded,     &h_surge_gridded,     sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(euler_integration, &h_euler_integration, sizeof(bool), 0, HtoD);
@@ -488,7 +489,8 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
                                 size_t pitchBY, double *n, double hydrograph_rate,
                                 int hydrograph_source,
                                 double hyetograph_rate, double drain_rate,
-                                double *hyetograph_gridded_rate, double *F,
+                                double *hyetograph_gridded_rate, double *drain_gridded_rate,
+                                double *F,
                                 double *F_old, double *dF, double *K,int *source_idx_dev, double *source_rate_dev, long numSources) {
 	int tidx = threadIdx.x;
 	int tidy = threadIdx.y;
@@ -688,16 +690,22 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
         S0 += hyetograph_rate;
     }
 
-    if (drain) {
-        S0 -= (drain_rate > hC/dt) ? hC/dt : drain_rate;
-    }
-    
     if (rainfall_gridded) {
         double *hyetograph_gridded_rate_ij =
             getElement(hyetograph_gridded_rate, pitch, j, i);
         S0 += *hyetograph_gridded_rate_ij;
     }
 	
+    if (drain_averaged) {
+        S0 -= (drain_rate > hC/dt) ? hC/dt : drain_rate;
+    }
+
+    if (drain_gridded) {
+        double *drain_gridded_rate_ij =
+            getElement(drain_gridded_rate, pitch, j, i);
+        S0 -= (*drain_gridded_rate_ij > hC/dt) ? hC/dt : *drain_gridded_rate_ij;
+    }
+    
     if (dambreak||numSources>0) {
         for (int counter = 0; counter < numSources; counter++){
             S0 = (j*nx + i == source_idx_dev[counter]) ? S0 + source_rate_dev[counter] : S0;
@@ -759,7 +767,7 @@ void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
                    double *G, int *active_blocks, double dt, double *n,
                    double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate,  double drain_rate,
-                   double *hyetograph_gridded_rate,
+                   double *hyetograph_gridded_rate, double *drain_gridded_rate,
                    double *F, double *F_old, double *dF, double *K, int *source_idx_dev, double *source_rate_dev, long numSources) {
     ComputeFluxes_k <<< nBlocks, BlockDim >>> (w, hu, hv, dw, dhu, dhv, mx, my, BC,
 	                                           BX, BY, G, active_blocks, dt, pitch,
@@ -768,6 +776,7 @@ void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
 	                                           hydrograph_source,
 	                                           hyetograph_rate, drain_rate,
                                                hyetograph_gridded_rate,
+                                               drain_gridded_rate,
 	                                           F, F_old, dF, K, source_idx_dev, source_rate_dev,numSources);
 }
 

@@ -111,6 +111,15 @@ void Simulator::ReadUserParams(std::string config_file) {
 		rainfall_averaged = false;
 	}
 
+	if (cfg.keyExists("hyetograph_prefix")) {
+		rainfall_gridded  = true;
+		hyetograph_prefix = cfg.getValueOfKey<std::string>("hyetograph_prefix");
+		hyetograph_dt     = cfg.getValueOfKey<double>      ("hyetograph_dt");
+		hyetograph_tf     = cfg.getValueOfKey<double>      ("hyetograph_tf");
+	} else {
+		rainfall_gridded  = false;
+	} 
+
 	if (cfg.keyExists("drain")) {
         drain_averaged = true;
         drain_file = cfg.getValueOfKey<std::string>("drain");
@@ -119,13 +128,13 @@ void Simulator::ReadUserParams(std::string config_file) {
         drain_averaged = false;
     }
 
-	if (cfg.keyExists("hyetograph_prefix")) {
-		rainfall_gridded  = true;
-		hyetograph_prefix = cfg.getValueOfKey<std::string>("hyetograph_prefix");
-		hyetograph_dt     = cfg.getValueOfKey<double>      ("hyetograph_dt");
-		hyetograph_tf     = cfg.getValueOfKey<double>      ("hyetograph_tf");
+	if (cfg.keyExists("drain_prefix")) {
+		drain_gridded  = true;
+		drain_prefix = cfg.getValueOfKey<std::string>("drain_prefix");
+		drain_dt     = cfg.getValueOfKey<double>      ("drain_dt");
+		drain_tf     = cfg.getValueOfKey<double>      ("drain_tf");
 	} else {
-		rainfall_gridded  = false;
+		drain_gridded  = false;
 	} 
 
     if (cfg.keyExists("surge_prefix")) {
@@ -262,7 +271,7 @@ void Simulator::InitSimulation(void) {
 				 dev_hyetograph_gridded_rate, dev_F, dev_F_old, dev_dF, dev_K,
 				 dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dambreak,
 	             rainfall_averaged, drain_averaged,
-                 rainfall_gridded, infiltration, 
+                 rainfall_gridded, drain_gridded, infiltration, 
 				 surge_gridded, euler_integration, check_volume, h_init, h_print, q_print,
 	             save_max, save_arrival_time, psi, dtheta, dev_time_peak, 
 				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
@@ -275,6 +284,15 @@ void Simulator::InitSimulation(void) {
                                                          dev_hyetograph_gridded_rate));
         hyetograph_series->update(t0);
 	}
+
+    if (drain_gridded) {
+        drain_series.reset(new HyetographGridSeries(drain_prefix,
+                                                    drain_dt,
+                                                    drain_tf,
+                                                    grid_config));
+        drain_series->update(t0);
+        dev_drain_gridded_rate = drain_series->grid_dev();
+    }
 
     if (surge_gridded) {
         surge_series.reset(new InterpolatedGridSeries(surge_prefix, 1.0,
@@ -648,7 +666,9 @@ double Simulator::RunSimulation() {
         ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
 		              hyetograph.interpolated_rate, drain.interpolated_rate,
-                      dev_hyetograph_gridded_rate, dev_F,
+                      dev_hyetograph_gridded_rate,
+                      dev_drain_gridded_rate,
+                      dev_F,
 					  dev_F_old, dev_dF, dev_K,source_idx_dev,source_rate_dev,NumSources);
 		ComputeTimestep();
 
@@ -665,7 +685,7 @@ double Simulator::RunSimulation() {
 			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
 						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
 						  hyetograph.interpolated_rate, drain.interpolated_rate,
-                          dev_hyetograph_gridded_rate,
+                          dev_hyetograph_gridded_rate, dev_drain_gridded_rate,
 						  dev_F, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
 			Integrate_2(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 						dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
@@ -678,6 +698,10 @@ double Simulator::RunSimulation() {
         if (rainfall_gridded) {
             hyetograph_series->update(t);
             V_added += hyetograph_series->sum()*dt;
+        }
+
+        if (drain_gridded) {
+            drain_series->update(t);
         }
 
         if (surge_gridded) {
