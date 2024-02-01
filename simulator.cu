@@ -183,6 +183,18 @@ void Simulator::ReadUserParams(std::string config_file) {
 		count_print = 0;
 	}
 
+    if (cfg.keyExists("b_print")) {
+        b_print = true;
+    } else {
+        b_print = false;
+    }
+
+    if (cfg.keyExists("n_print")) {
+        n_print = true;
+    } else {
+        n_print = false;
+    }
+
 	if (cfg.keyExists("device")) {
 		device = cfg.getValueOfKey<int>("device");
 	} else {
@@ -394,6 +406,31 @@ void Simulator::InitSimulation(void) {
 
 	InitGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_BC, dev_BX, dev_BY, dev_wet_blocks,
 	         dev_active_blocks, dev_h, dev_t_wet, dev_G);
+
+    if (b_print) {
+        std::unique_ptr<double[]>
+            h_BC(new double[grid_config.h_nx * grid_config.h_ny]);
+        checkCudaErrors(cudaMemcpy2D(h_BC.get(), grid_config.h_nx*sizeof(double),
+                                     dev_BC, pitch,
+									 grid_config.h_nx*sizeof(double),
+                                     grid_config.h_ny, DtoH));
+		std::stringstream filename_h;
+		filename_h << output_file << "/bc.txt";
+        writeGrid(filename_h.str(), h_BC.get(), grid_config);
+    }
+
+    if (n_print) {
+        std::unique_ptr<double[]>
+            h_n(new double[grid_config.h_nx * grid_config.h_ny]);
+        checkCudaErrors(cudaMemcpy2D(h_n.get(), grid_config.h_nx*sizeof(double),
+                                     dev_n, pitch,
+									 grid_config.h_nx*sizeof(double),
+                                     grid_config.h_ny, DtoH));
+		std::stringstream filename_h;
+		filename_h << output_file << "/n.txt";
+        writeGrid(filename_h.str(), h_n.get(), grid_config);
+    }
+        
 }
 
 void Simulator::StartTimer() {

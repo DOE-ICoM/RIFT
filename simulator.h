@@ -51,6 +51,9 @@ public:
 	double kappa;
 
 	// Simulation output variables
+    bool  b_print;           // save internal (interpolated) bathymetry map (for debugging)
+    bool  n_print;           // save internal (interpolated) Mannings map (for debugging)
+    
 	bool  h_print;           // specifies if height data should be printed
 	bool  q_print;           // specifies if discharge data should be printed
 	bool  save_max;          // specifies if maximal data should be printed
