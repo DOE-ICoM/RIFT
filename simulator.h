@@ -55,6 +55,7 @@ public:
     bool  n_print;           // save internal (interpolated) Mannings map (for debugging)
     
 	bool  h_print;           // specifies if height data should be printed
+    bool ws_print;           // specifies if water surface elevation data should be printed
 	bool  q_print;           // specifies if discharge data should be printed
 	bool  save_max;          // specifies if maximal data should be printed
 	bool  save_arrival_time; // specifies if arrival time data should be printed
@@ -146,10 +147,10 @@ public:
 	// Variables (moving here - previous global variables)
 	// Define host arrays
 	double *h_o, *n_o, *K_o, *hyetograph_o;
-	double *b, *h_BX, *h_BY, *h_hyetograph, *h_n, *h_F, *h_K, *h_q, *h_h, *h_h_max,
+	double *b, *h_BC, *h_BX, *h_BY, *h_hyetograph, *h_n, *h_F, *h_K, *h_q, *h_h, *h_h_max,
       *h_q_max, *h_t_wet;
 	// malloc flags
-	int f_h_o, f_n_o, f_K_o, f_hyetograph_o, f_b, f_h_BX, f_h_BY, 
+	int f_h_o, f_n_o, f_K_o, f_hyetograph_o, f_b, f_h_BC, f_h_BX, f_h_BY, 
 		f_h_hyetograph, f_h_n, f_h_F, f_h_K, f_h_q, f_h_h, f_h_h_max,
 		f_h_q_max, f_h_t_wet, f_source_idx, f_source_rate;
 

@@ -146,17 +146,24 @@ void Simulator::ReadUserParams(std::string config_file) {
         surge_gridded = false;
     }
 
-	if (cfg.keyExists("h_print")) {
-		h_print = cfg.getValueOfKey<bool>("h_print");
-	} else {
-		h_print = false;
-	}
-	if (cfg.keyExists("save_max")) {
-		save_max = cfg.getValueOfKey<bool>("save_max");
-	}else {
-		save_max = false;
-	}
-       
+    if (cfg.keyExists("h_print")) {
+        h_print = cfg.getValueOfKey<bool>("h_print");
+    } else {
+        h_print = false;
+    }
+
+    if (cfg.keyExists("ws_print")) {
+        ws_print = cfg.getValueOfKey<bool>("ws_print");
+    } else {
+        ws_print = false;
+    }
+    
+    if (cfg.keyExists("save_max")) {
+        save_max = cfg.getValueOfKey<bool>("save_max");
+    } else {
+        save_max = false;
+    }
+
         if (cfg.keyExists("save_arrival")){
 
                 save_arrival_time = cfg.getValueOfKey<bool>("save_arrival");
@@ -177,7 +184,7 @@ void Simulator::ReadUserParams(std::string config_file) {
 		check_volume = false;
 	}
 
-	if (h_print || q_print || check_volume) {
+	if (h_print || q_print || ws_print || check_volume) {
 		t_print     = t0;
 		dt_print    = cfg.getValueOfKey<double>("dt_print");
 		count_print = 0;
@@ -228,7 +235,7 @@ void Simulator::InitSimulation(void) {
 		kappa = sqrtf(0.01f*fmaxf(1.f, fminf(grid_config.h_dx, grid_config.h_dy)));
 	//}
 
-	if (h_init || h_print) {
+	if (h_init || h_print || ws_print) {
 		h_h = (double*)malloc(grid_config.h_nx * grid_config.h_ny * sizeof(double));
 		f_h_h = 1;
 		memset(h_h, 0, grid_config.h_nx * grid_config.h_ny * sizeof(double));
@@ -317,7 +324,7 @@ void Simulator::InitSimulation(void) {
     } else {
         dev_surge_gridded_depth = NULL;
     }
-	
+
     h_BX = (double*)malloc(grid_config.h_ny*(grid_config.h_nx+1)*sizeof(double));
 	f_h_BX = 1;
     h_BY = (double*)malloc((grid_config.h_ny+1)*grid_config.h_nx*sizeof(double));
@@ -407,16 +414,20 @@ void Simulator::InitSimulation(void) {
 	InitGrid(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_BC, dev_BX, dev_BY, dev_wet_blocks,
 	         dev_active_blocks, dev_h, dev_t_wet, dev_G);
 
-    if (b_print) {
-        std::unique_ptr<double[]>
-            h_BC(new double[grid_config.h_nx * grid_config.h_ny]);
-        checkCudaErrors(cudaMemcpy2D(h_BC.get(), grid_config.h_nx*sizeof(double),
+    if (b_print || ws_print) {
+        h_BC = (double*)malloc(grid_config.h_nx*grid_config.h_ny*sizeof(double));
+        memset(h_BC, 0, grid_config.h_ny*(grid_config.h_nx)*sizeof(double));
+        f_h_BC = 1;
+        checkCudaErrors(cudaMemcpy2D(h_BC, grid_config.h_nx*sizeof(double),
                                      dev_BC, pitch,
 									 grid_config.h_nx*sizeof(double),
                                      grid_config.h_ny, DtoH));
+    }
+
+    if (b_print) {
 		std::stringstream filename_h;
 		filename_h << output_file << "/bc.txt";
-        writeGrid(filename_h.str(), h_BC.get(), grid_config);
+        writeGrid(filename_h.str(), h_BC, grid_config);
     }
 
     if (n_print) {
@@ -508,7 +519,7 @@ void Simulator::ComputeTimestep() {
 
 void Simulator::PrintData(void) {
 	dev_wet_count = 0;
-	if (h_print || check_volume) {
+	if (h_print || ws_print || check_volume) {
 		checkCudaErrors(cudaMemcpy2D(h_h, grid_config.h_nx*sizeof(double), dev_h, pitch,
 									 grid_config.h_nx*sizeof(double), grid_config.h_ny, DtoH));
 	}
@@ -521,6 +532,18 @@ void Simulator::PrintData(void) {
 		filename_h << output_file << "/h" << count_print << ".txt";
         writeGrid(filename_h.str(), h_h, grid_config);
 	}
+
+    if (ws_print) {
+        std::unique_ptr< double[] >
+            h_ws(new double[grid_config.h_nx*grid_config.h_ny]);
+        for (int i = 0; i < grid_config.h_nx*grid_config.h_ny; ++i) {
+            h_ws[i] = h_h[i] + h_BC[i];
+        }
+        
+		std::stringstream filename_h;
+		filename_h << output_file << "/ws" << count_print << ".txt";
+        writeGrid(filename_h.str(), h_ws.get(), grid_config);
+    }
 
     if (drain_averaged) {
         std::cout << "Drain Rate: " << drain.interpolated_rate << std::endl;
@@ -658,6 +681,7 @@ void Simulator::CloseSimulation(){
 	         dev_wet_blocks, dev_active_blocks, dev_n, dev_hyetograph_gridded_rate, dev_F, dev_F_old,
              dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet, dev_time_peak, dev_time_dry, dev_G);		//added t_peak and t_dry by Youcan on 20170908
 	if(f_b) 			free(b);
+	if(f_h_BC) 			free(h_BC);
 	if(f_h_BX) 			free(h_BX);
 	if(f_h_BY) 			free(h_BY);
 	if(f_h_h) 			free(h_h);
@@ -745,7 +769,7 @@ double Simulator::RunSimulation() {
             surge_series->update(t);
         }
 
-		if (h_print || q_print || check_volume) {
+		if (h_print || q_print || ws_print || check_volume) {
 			if (t > t_print) {
 				PrintData();
 				t_print += dt_print;
