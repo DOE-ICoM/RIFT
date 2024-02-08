@@ -536,8 +536,13 @@ void Simulator::PrintData(void) {
     if (ws_print) {
         std::unique_ptr< double[] >
             h_ws(new double[grid_config.h_nx*grid_config.h_ny]);
+        
         for (int i = 0; i < grid_config.h_nx*grid_config.h_ny; ++i) {
-            h_ws[i] = h_h[i] + h_BC[i];
+            if (h_h[i] > 0.0) {
+                h_ws[i] = h_h[i] + h_BC[i];
+            } else {
+                h_ws[i] = grid_config.nodata;
+            }
         }
         
 		std::stringstream filename_h;
