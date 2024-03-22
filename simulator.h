@@ -67,8 +67,6 @@ public:
 	bool  check_volume; // specifies if volume should be tracked (to verify that volume is conserved)
 	double V_added;      // total volume added to the system (m^3)
 	double V_computed;   // total volume computed in the system (m^3)
-	bool square_cells;  // Do not change dx/dy by latitude, assume zero latitude
-    
 
 	bool dambreak;               // specifies if a dam breach occurs
 	Source hydrograph;           // hydrograph describing the dam breach (s, m^3)

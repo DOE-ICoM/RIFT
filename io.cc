@@ -24,51 +24,8 @@ typedef std::numeric_limits<double>  flt;
 
 // double h_dx, h_dy;
 
-/* 
-   Blatently plagerized from 
-   https://rosettacode.org/wiki/Haversine_formula#C++
-*/
-
-inline double DegreeToRadian(double angle)
-{
-	return M_PI * angle / 180.0;
-}
-
-static double HaversineDistance(const double& long1, const double& lat1,
-                         const double& long2, const double& lat2)
-{
-    const static double EarthRadiusKm = 6372.8;
-    double latRad1 = DegreeToRadian(lat1);
-	double latRad2 = DegreeToRadian(lat2);
-	double lonRad1 = DegreeToRadian(long1);
-	double lonRad2 = DegreeToRadian(long2);
-
-	double diffLa = latRad2 - latRad1;
-	double doffLo = lonRad2 - lonRad1;
-
-	double computation =
-        asin(sqrt(sin(diffLa / 2) * sin(diffLa / 2) +
-                  cos(latRad1) * cos(latRad2) * sin(doffLo / 2) * sin(doffLo / 2)));
-	return 2 * EarthRadiusKm * computation;
-}
-
-static void ComputeCellSize(const int &nx, const int &ny,
-                     const double &xmin, const double &ymin, const double &cellsize,
-                     double &dx, double &dy) {
-    double domain_width_deg(nx*cellsize);
-    double domain_height_deg(ny*cellsize);
-    double xcenter(xmin + domain_width_deg/2.0), xmax(xmin + domain_width_deg);
-    double ycenter(ymin + domain_height_deg/2.0), ymax(ymin + domain_height_deg);
-    
-    double domain_width_m = HaversineDistance(xmin, ycenter, xmax, ycenter);
-    double domain_height_m = HaversineDistance(xcenter, ymin, xcenter, ymax);
-
-    dx = domain_width_m/nx*1000.0;
-    dy = domain_height_m/ny*1000.0;
-}
-
 // depth of water - oceans, seas or lakes
-void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config, const bool& square_cells) {
+void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config) {
 
     double minimum = 9999.f;
     std::ifstream ifs;
@@ -148,27 +105,8 @@ void InitBathymetry(double *&b, std::string filename, GridConfig& grid_config, c
         }
     }
 
-    grid_config.cellsize = grid_config.cellsize_original*6378137.0*pi / 180.0;
-    if (square_cells) {
-      // Convert cellsize from degrees to meters and set dx, dy
-      grid_config.h_dx = (double )grid_config.cellsize_original*6378137.f*(double )pi / 180.f;
-      grid_config.h_dy = (double )grid_config.cellsize_original*6378137.f*(double )pi / 180.f;    
-    } else {
-      ComputeCellSize(grid_config.b_nx, grid_config.b_ny,
-                      grid_config.h_xll, grid_config.h_yll,
-                      grid_config.cellsize_original,
-                      grid_config.h_dx, grid_config.h_dy);
-    }
-
-    grid_config.h_nx = grid_config.b_nx + 4 - 1;
-    grid_config.h_ny = grid_config.b_ny + 4 - 1;
-
-    std::cout << "Computed Cell Sizes: " << std::endl;
-    std::cout << "\tOriginal (deg): " << grid_config.cellsize_original << std::endl;
-    std::cout << "\tOriginal (m): " << grid_config.cellsize << std::endl;
-    std::cout << "\tInternal (m): "
-              << grid_config.h_dx << ", "
-              << grid_config.h_dy << std::endl;
+    grid_config.ComputeCellSize();
+    grid_config.ReportCellSize(std::cout);
 
 }
 
