@@ -16,6 +16,7 @@ struct GridConfig
 {
   static const double nodata;
   static bool square_cells;
+  static bool projected;
   int b_nx, b_ny;
   double b_xll, b_yll;
   double cellsize_original;

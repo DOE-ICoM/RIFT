@@ -15,6 +15,9 @@ const double GridConfig::nodata(-9999.0);
 /// Do not change dx/dy by latitude, assume zero latitude
 bool GridConfig::square_cells(true);
 
+/// Input projection is Cartesian rather than geocentric
+bool GridConfig::projected(false);
+
 
 /* 
    Blatently plagerized from 
@@ -62,13 +65,19 @@ static void ComputeNonSquare(const int &nx, const int &ny,
 /// Compute computational cell sizes based on input options
 void GridConfig::ComputeCellSize(void)
 {
-  cellsize = cellsize_original*6378137.0*pi / 180.0;
-  if (square_cells) {
-    // Convert cellsize from degrees to meters and set dx, dy
-    h_dx = (double )cellsize_original*6378137.f*(double )pi / 180.f;
-    h_dy = (double )cellsize_original*6378137.f*(double )pi / 180.f;    
+  if (!projected) {
+    cellsize = cellsize_original*6378137.0*M_PI / 180.0;
+    if (square_cells) {
+      // Convert cellsize from degrees to meters and set dx, dy
+      h_dx = (double )cellsize_original*6378137.f*(double )M_PI / 180.f;
+      h_dy = (double )cellsize_original*6378137.f*(double )M_PI / 180.f;    
+    } else {
+      ComputeNonSquare(b_nx, b_ny, h_xll, h_yll, cellsize_original, h_dx, h_dy);
+    }
   } else {
-    ComputeNonSquare(b_nx, b_ny, h_xll, h_yll, cellsize_original, h_dx, h_dy);
+    cellsize = cellsize_original;
+    h_dx = cellsize;
+    h_dy = cellsize;
   }
   
   h_nx = b_nx + 4 - 1;
@@ -79,8 +88,12 @@ void GridConfig::ComputeCellSize(void)
 void GridConfig::ReportCellSize(std::ostream& out) const
 {
   out << "Computed Cell Sizes: " << std::endl;
-  out << "\tOriginal (deg): " << cellsize_original << std::endl;
-  out << "\tOriginal (m): " << cellsize << std::endl;
+  if (!projected) {
+    out << "\tOriginal (deg): " << cellsize_original << std::endl;
+    out << "\tOriginal (m): " << cellsize << std::endl;
+  } else {
+    out << "\tOriginal (m): " << cellsize_original << std::endl;
+  }
   out << "\tInternal (m): "
       << h_dx << ", "
       << h_dy << std::endl;

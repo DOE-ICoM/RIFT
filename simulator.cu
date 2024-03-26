@@ -214,6 +214,12 @@ void Simulator::ReadUserParams(std::string config_file) {
         GridConfig::square_cells = true;
     }
 
+    if (cfg.keyExists("projected")) {
+        GridConfig::projected = true;
+    } else {
+        GridConfig::projected = false;
+    }
+
 
 	V_added = 0.f;
 
