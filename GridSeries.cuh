@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2023-11-21 13:27:32 d3g096
+// Last Change: 2024-06-20 06:17:19 d3g096
 // -------------------------------------------------------------
 
 
@@ -33,7 +33,7 @@ public:
              double *dev_buf = NULL);
 
   /// Destructor
-  ~GridSeries(void);
+  virtual ~GridSeries(void);
 
   /// Update grid series to specified time
   void update(const double& t)
