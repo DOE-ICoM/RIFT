@@ -37,6 +37,8 @@ main(int argc, char **argv)
 
   SetDeviceConstants(gc.h_nx, gc.h_ny, gc.h_dx, gc.h_dy, 1.0, gc.nodata);
 
+  double tmax = 86400;
+  double dt = 600;
   std::unique_ptr<GridSeries>
     g(new 
 #ifdef INTERPOLATE
@@ -44,10 +46,8 @@ main(int argc, char **argv)
 #else
       GridSeries
 #endif
-      (basename, 1.0, 3600.0, 43200.0, gc));
+      (basename, 1.0, dt, tmax, gc));
   g->allow_no_data(true);
-  double tmax = 86400;
-  double dt = 600;
 
   for (double t = 0; t <= tmax; t += dt) {
     g->update(t);
