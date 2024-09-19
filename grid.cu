@@ -1206,7 +1206,7 @@ __global__ void TrackSurge_k(bool *wet_blocks, int *active_blocks, double *surge
 
 	if (i < 2 || j < 2 || i > nx - 3 || j > ny -3) return;
 
-	// check rain sources
+	// check surge 
 	double *surge_ij = getElement(surge_elev, pitch, j, i);
 	if (*surge_ij != nodata) {
         if (*surge_ij > 0.0) {
