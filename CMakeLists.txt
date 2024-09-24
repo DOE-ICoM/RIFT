@@ -39,7 +39,7 @@ endif()
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --use_fast_math")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --generate-line-info")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -g -G")
 endif()
 
 # set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -m64; -O3;
@@ -78,32 +78,21 @@ if(MPI_FOUND)
 	target_link_libraries(rift PUBLIC MPI::MPI_C)
 endif()
 
-# -------------------------------------------------------------
-# GridSeriesTest
-# -------------------------------------------------------------
-set(GridSeriesTestSource
-  GridSeriesTest.cpp
-  GridSeries.cu
-  io.cc
-  grid.cu
-  grid_config.cpp
-)
-add_executable(GridSeriesTest ${GridSeriesTestSource})
-set_target_properties(GridSeriesTest PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-target_include_directories(GridSeriesTest
-  PUBLIC ${CUDAToolkit_INCLUDE_DIRS} ${CUDA_SAMPLES_INC} )
-
-# -------------------------------------------------------------
-# InterpolatedGridSeriesTest
-# -------------------------------------------------------------
 if (RIFT_ENABLE_TESTS)
-  add_executable(InterpolatedGridSeriesTest ${GridSeriesTestSource})
-  target_compile_definitions(InterpolatedGridSeriesTest
-    PUBLIC -DINTERPOLATE
-    )
-  set_target_properties(InterpolatedGridSeriesTest
-    PROPERTIES CUDA_SEPARABLE_COMPILATION ON
-    )
-  target_include_directories(InterpolatedGridSeriesTest
+
+  # -------------------------------------------------------------
+  # GridSeriesTest
+  # -------------------------------------------------------------
+  set(GridSeriesTestSource
+    GridSeriesTest.cpp
+    GridSeries.cu
+    io.cc
+    grid.cu
+    grid_config.cpp
+  )
+  add_executable(GridSeriesTest ${GridSeriesTestSource})
+  set_target_properties(GridSeriesTest PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  target_include_directories(GridSeriesTest
     PUBLIC ${CUDAToolkit_INCLUDE_DIRS} ${CUDA_SAMPLES_INC} )
+  
 endif ()
