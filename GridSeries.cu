@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2024-09-24 09:00:06 d3g096
+// Last Change: 2024-09-24 09:10:32 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -299,9 +299,7 @@ InterpolatedGridSeries::InterpolatedGridSeries(const std::string& basename,
                                                const double& tmax,
                                                const struct GridConfig& gc,
                                                double *dev_buf)
-  : GridSeries(basename, scale, deltat, tmax, gc, dev_buf),
-    p_t0_buffer(new double[gc.h_nx*gc.h_ny]()),
-    p_t1_buffer(new double[gc.h_nx*gc.h_ny]())
+  : GridSeries(basename, scale, deltat, tmax, gc, dev_buf)
 {
     // warning: global variables
     // Call SetDeviceConstants() first
@@ -331,10 +329,6 @@ InterpolatedGridSeries::p_update(const double& t)
       index = trunc(p_in_time/p_in_dt);
       p_read_grid(index);
 
-      // std::copy(&(p_int_buffer[0]),
-      //           &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-      //           &(p_t0_buffer[0]));
-
       checkCudaErrors(cudaMemcpy2D(p_t0_dev, pitch, &(p_int_buffer[0]),
                                  p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
                                  p_gc.h_ny, HtoD));
@@ -343,16 +337,10 @@ InterpolatedGridSeries::p_update(const double& t)
       p_next_time = p_in_time + p_in_dt;
       p_read_grid(index + 1);
 
-      // std::copy(&(p_int_buffer[0]),
-      //           &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-      //           &(p_t1_buffer[0]));
-
       checkCudaErrors(cudaMemcpy2D(p_t1_dev, pitch, &(p_int_buffer[0]),
                                  p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
                                  p_gc.h_ny, HtoD));
 
-      // this->p_copy_to_dev();
-      
   } else if (t >= p_max_time) {
 
     if (!p_done) {
@@ -364,19 +352,10 @@ InterpolatedGridSeries::p_update(const double& t)
                                    p_gc.h_nx*sizeof(double), p_gc.h_ny,
                                    cudaMemcpyDeviceToDevice));
       
-      // std::copy(&(p_t1_buffer[0]),
-      //           &(p_t1_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-      //           &(p_t0_buffer[0]));
-
-      // this->p_copy_to_dev();
     }
     p_done = true;
       
   } else if (t >= p_next_time) {
-
-    // std::copy(&(p_t1_buffer[0]),
-    //           &(p_t1_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-    //           &(p_t0_buffer[0]));
 
     checkCudaErrors(cudaMemcpy2D(p_t0_dev, pitch, p_t1_dev, pitch,
                                  p_gc.h_nx*sizeof(double), p_gc.h_ny,
@@ -387,23 +366,14 @@ InterpolatedGridSeries::p_update(const double& t)
     index = trunc(p_next_time/p_in_dt);
     p_read_grid(index);
 
-    // std::copy(&(p_int_buffer[0]),
-    //           &(p_int_buffer[0]) + p_gc.h_nx*p_gc.h_ny,
-    //           &(p_t1_buffer[0]));
-
     checkCudaErrors(cudaMemcpy2D(p_t1_dev, pitch, &(p_int_buffer[0]),
                                  p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
                                  p_gc.h_ny, HtoD));
 
-    // this->p_copy_to_dev();
   }
 
   double factor((t - p_in_time)/(p_next_time - p_in_time));
 
-  // for (int i  = 0; i < p_gc.h_nx*p_gc.h_ny; ++i) {
-  //   p_int_buffer[i] = factor*(p_t1_buffer[i] - p_t0_buffer[i]) + p_t0_buffer[i];
-  // }
-  // GridSeries::p_copy_to_dev();
   InterpGrid(factor, p_t0_dev, p_t1_dev, p_current_dev);
   
 }  
@@ -425,12 +395,5 @@ InterpolatedGridSeries::p_init_dev()
 void
 InterpolatedGridSeries::p_copy_to_dev(void)
 {
-  checkCudaErrors(cudaMemcpy2D(p_t0_dev, pitch, &(p_t0_buffer[0]),
-                               p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
-                               p_gc.h_ny, HtoD));
-
-  checkCudaErrors(cudaMemcpy2D(p_t1_dev, pitch, &(p_t1_buffer[0]),
-                               p_gc.h_nx*sizeof(double), p_gc.h_nx*sizeof(double),
-                               p_gc.h_ny, HtoD));
 }  
 

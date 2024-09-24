@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2024-09-23 08:59:24 d3g096
+// Last Change: 2024-09-24 09:09:15 d3g096
 // -------------------------------------------------------------
 
 
@@ -205,9 +205,6 @@ protected:
 
   /// Input time for second grid
   double p_next_time;
-
-  /// Time plane buffers
-  std::unique_ptr<double[]> p_t0_buffer, p_t1_buffer;
 
   /// Device time plane buffers
   double *p_t0_dev, *p_t1_dev;
