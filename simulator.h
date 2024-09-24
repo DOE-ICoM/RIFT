@@ -94,8 +94,9 @@ public:
 
 	bool rainfall_gridded;         // specifies if gridded rainfall occurs
   
-  std::unique_ptr<GridSeries> hyetograph_series;
-  std::string hyetograph_prefix; // file location/prefix of gridded rainfall data
+    std::unique_ptr<GridSeries> hyetograph_series;
+    std::string hyetograph_prefix;  // file location/prefix of gridded rainfall data
+    bool hyetograph_interp;         // linearly interpolate hyetograph in time
 	double hyetograph_t;            // initial gridded hyetograph time (s)
 	double hyetograph_tf;           // final gridded hyetograph time (s)
 	double hyetograph_dt;           // timestep between gridded rainfall data (s)

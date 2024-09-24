@@ -22,6 +22,17 @@
 typedef std::numeric_limits<double> dbl;
 typedef std::numeric_limits<double> flt;
 
+static void
+error_missing_phrase(const std::string& needed,
+                     const std::string& reqd_by)
+{
+    std::ostringstream msg;
+    msg << "ERROR: phrase \"" << needed << "\""
+        << " required by phrase \"" << reqd_by << "\""
+        << " is missing";
+    throw std::runtime_error(msg.str());
+}
+
 void Simulator::ReadUserParams(std::string config_file) {
 	ConfigFile cfg(config_file.c_str()); // save the user-defined parameter file
 	                                     // into the ConfigFile instance cfg
@@ -114,8 +125,19 @@ void Simulator::ReadUserParams(std::string config_file) {
 	if (cfg.keyExists("hyetograph_prefix")) {
 		rainfall_gridded  = true;
 		hyetograph_prefix = cfg.getValueOfKey<std::string>("hyetograph_prefix");
-		hyetograph_dt     = cfg.getValueOfKey<double>      ("hyetograph_dt");
-		hyetograph_tf     = cfg.getValueOfKey<double>      ("hyetograph_tf");
+        if (cfg.keyExists("hyetograph_interp")) {
+            hyetograph_interp = cfg.getValueOfKey<bool>("hyetograph_interp");
+        }
+        if (!cfg.keyExists("hyetograph_dt")) {
+            error_missing_phrase("hyetograph_dt", "hyetograph_prefix");
+        } else {
+            hyetograph_dt = cfg.getValueOfKey<double>("hyetograph_dt");
+        }
+        if (!cfg.keyExists("hyetograph_tf")) {
+            error_missing_phrase("hyetograph_tf", "hyetograph_prefix");
+        } else {
+            hyetograph_tf = cfg.getValueOfKey<double>("hyetograph_tf");
+        }
 	} else {
 		rainfall_gridded  = false;
 	} 
@@ -303,11 +325,19 @@ void Simulator::InitSimulation(void) {
 				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
 
 	if (rainfall_gridded) {
-        hyetograph_series.reset(new HyetographGridSeries(hyetograph_prefix,
-                                                         hyetograph_dt,
-                                                         hyetograph_tf,
-                                                         grid_config,
-                                                         dev_hyetograph_gridded_rate));
+        if (hyetograph_interp) {
+            hyetograph_series.reset(new InterpolatedHyetographGridSeries(hyetograph_prefix,
+                                                                         hyetograph_dt,
+                                                                         hyetograph_tf,
+                                                                         grid_config,
+                                                                         dev_hyetograph_gridded_rate));
+        } else {
+            hyetograph_series.reset(new HyetographGridSeries(hyetograph_prefix,
+                                                             hyetograph_dt,
+                                                             hyetograph_tf,
+                                                             grid_config,
+                                                             dev_hyetograph_gridded_rate));
+        }
         hyetograph_series->update(t0);
 	}
 
