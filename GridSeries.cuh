@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2024-06-20 06:17:19 d3g096
+// Last Change: 2024-09-23 08:59:24 d3g096
 // -------------------------------------------------------------
 
 
@@ -141,6 +141,9 @@ class HyetographGridSeries
 {
 public:
 
+  /// Scale used for rainfall (converts mm/hr to m/s)
+  static const double scale;
+
   /// Default constructor.
   HyetographGridSeries(const std::string& basename,
                        const int& deltat,
@@ -194,9 +197,9 @@ protected:
   /// Update grid series to specified time (specialized)
   void p_update(const double& t);
 
-  /// Method used to interpolate input to internal grid
-  void p_interp(void); 
-
+  /// Send the map to the device (specialized)
+  void p_copy_to_dev(void);
+  
   /// Initialize the device buffer(s) with default value
   void p_init_dev(void);
 
@@ -209,6 +212,40 @@ protected:
   /// Device time plane buffers
   double *p_t0_dev, *p_t1_dev;
 };
+
+// -------------------------------------------------------------
+// class InterpolatedHyetographGridSeries
+//
+// An optional GridSeries for rainfall maps that interpolates between
+// time steps.
+// -------------------------------------------------------------
+class InterpolatedHyetographGridSeries
+  : public InterpolatedGridSeries
+{
+protected:
+
+  /// Protected copy constructor to avoid unwanted copies.
+  InterpolatedHyetographGridSeries(const InterpolatedHyetographGridSeries& old);
+
+public:
+
+  /// Default constructor.
+  InterpolatedHyetographGridSeries(const std::string& basename,
+                                   const int& deltat,
+                                   const double& tmax,
+                                   const struct GridConfig& gc,
+                                   double *dev_buf = NULL)
+    : InterpolatedGridSeries(basename,
+                             HyetographGridSeries::scale,
+                             deltat, tmax, gc, dev_buf)
+  {}
+
+  /// Destructor
+  ~InterpolatedHyetographGridSeries(void)
+  {}
+};
+
+
 
 
 #endif
