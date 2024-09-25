@@ -237,7 +237,7 @@ void Simulator::ReadUserParams(std::string config_file) {
     }
 
     if (cfg.keyExists("projected")) {
-        GridConfig::projected = true;
+        GridConfig::projected = cfg.getValueOfKey<bool>("projected");
     } else {
         GridConfig::projected = false;
     }
