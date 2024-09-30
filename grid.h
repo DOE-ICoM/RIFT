@@ -21,7 +21,7 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   bool h_rainfall_gridded, bool h_drain_gridded, bool h_infiltration,
                   bool h_surge_gridded, bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
-                  bool h_q_print, bool h_save_max, bool h_save_arrival_time,
+                  bool h_q_print, bool h_save_max, bool h_save_arrival_time, bool tile_acceleration, 
                   double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G, 
                   GridConfig& grid_config);	//added time_peak and time_dry by Youcan on 20170908
 

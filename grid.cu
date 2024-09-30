@@ -22,6 +22,7 @@ __constant__ bool  dambreak, rainfall_averaged, rainfall_gridded, infiltration;
 __constant__ bool  drain_averaged, drain_gridded;
 __constant__ bool  surge_gridded, euler_integration, check_volume;
 __constant__ bool  h_init, h_print, q_print, save_max, save_arrival_time;
+__constant__ bool  tile_acceleration;
 __constant__ int   nx, ny, nBlocksX, nBlocksY;
 __constant__ double dx, dy, kappa, psi, dtheta, nodata;
 __constant__ double g       = 9.80665f;
@@ -277,7 +278,7 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
                   bool h_rainfall_gridded, bool h_drain_gridded, bool h_infiltration,
                   bool h_surge_gridded, bool h_euler_integration,
                   bool h_check_volume, bool h_h_init, bool h_h_print,
-                  bool h_q_print, bool h_save_max, bool h_save_arrival_time,
+                  bool h_q_print, bool h_save_max, bool h_save_arrival_time, bool h_tile_acceleration, 
                   double h_psi, double h_dtheta, double *&t_peak, double *&t_dry, double *&G
 				  , GridConfig& grid_config) {	//added time_peak and time_dry by Youcan on 20170908
 //10000196001000
@@ -286,7 +287,7 @@ void AllocateGrid(double *&w, double *&hu, double *&hv, double *&w_old,
 
 	std::cout << h_dambreak << h_rainfall_averaged << h_drain_averaged << h_rainfall_gridded <<
 h_infiltration << h_euler_integration << h_check_volume <<
-h_h_init << h_h_print << h_q_print << h_save_max << h_save_arrival_time <<
+        h_h_init << h_h_print << h_q_print << h_save_max << h_save_arrival_time << h_tile_acceleration <<
 std::endl;
 
     cudaMemcpyToSymbol(dambreak,          &h_dambreak,          sizeof(bool), 0, HtoD);
@@ -303,6 +304,7 @@ std::endl;
     cudaMemcpyToSymbol(q_print,           &h_q_print,           sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(save_max,          &h_save_max,          sizeof(bool), 0, HtoD);
     cudaMemcpyToSymbol(save_arrival_time, &h_save_arrival_time, sizeof(bool), 0, HtoD);
+    cudaMemcpyToSymbol(tile_acceleration, &h_tile_acceleration, sizeof(bool), 0, HtoD);
 
 	size_t width     = (GridDim.x * BLOCK_COLS)     * sizeof(double);
 	size_t width_p1  = (GridDim.x * BLOCK_COLS + 1) * sizeof(double);
@@ -943,7 +945,8 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 		__syncthreads();
 
 		if (tidx == 0 && tidy == 0) {
-			wet_blocks[blockY*nBlocksX+blockX] = false;
+			wet_blocks[blockY*nBlocksX+blockX] =
+                (tile_acceleration ? false : true);
 			for (int l = 0; l < BLOCK_ROWS; l++) {
 				if (wet[l][0]) {
 					wet_blocks[blockY*nBlocksX+blockX] = true;
@@ -1098,7 +1101,7 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
 
 	// Perform the final reduction
 	if (tidx == 0 && tidy == 0) {
-		wet_blocks[blockY*nBlocksX+blockX] = false;
+		wet_blocks[blockY*nBlocksX+blockX] = !tile_acceleration;
 		for (int l = 0; l < BLOCK_ROWS; l++) {
 			if (wet[l][0]) {
 				wet_blocks[blockY*nBlocksX+blockX] = true;

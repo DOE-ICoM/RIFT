@@ -115,6 +115,8 @@ public:
 	double surge_tf;           // final sugre time (s)
 	double surge_dt;           // timestep between surgedata (s)
 
+    bool tile_acceleration;     // accelerate computations by only considering wet tiles/blocks
+
   double flow_rate;
 	double volume_old;
 	struct timeval start_time;     // start time of simulation

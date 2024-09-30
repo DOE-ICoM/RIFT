@@ -242,6 +242,11 @@ void Simulator::ReadUserParams(std::string config_file) {
         GridConfig::projected = false;
     }
 
+    if (cfg.keyExists("tile_acceleration")) {
+        tile_acceleration = cfg.getValueOfKey<bool>("tile_acceleration");
+    } else {
+        tile_acceleration = true;
+    }
 
 	V_added = 0.f;
 
@@ -321,7 +326,7 @@ void Simulator::InitSimulation(void) {
 	             rainfall_averaged, drain_averaged,
                  rainfall_gridded, drain_gridded, infiltration, 
 				 surge_gridded, euler_integration, check_volume, h_init, h_print, q_print,
-	             save_max, save_arrival_time, psi, dtheta, dev_time_peak, 
+	             save_max, save_arrival_time, tile_acceleration, psi, dtheta, dev_time_peak, 
 				 dev_time_dry, dev_G, grid_config);	//added time_peak and time_dry by Youcan on 20170908
 
 	if (rainfall_gridded) {
