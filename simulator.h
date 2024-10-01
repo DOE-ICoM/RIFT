@@ -75,7 +75,6 @@ public:
 	double source_Y;
 	int source_x;
 	int source_y;
-	int dambreak_source_idx;     // array index of dam breach source location
 	
 	/** Added for 1D-2D*/
 	int *source_idx, *source_idx_dev;

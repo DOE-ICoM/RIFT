@@ -22,17 +22,6 @@
 typedef std::numeric_limits<double> dbl;
 typedef std::numeric_limits<double> flt;
 
-static void
-error_missing_phrase(const std::string& needed,
-                     const std::string& reqd_by)
-{
-    std::ostringstream msg;
-    msg << "ERROR: phrase \"" << needed << "\""
-        << " required by phrase \"" << reqd_by << "\""
-        << " is missing";
-    throw std::runtime_error(msg.str());
-}
-
 void Simulator::ReadUserParams(std::string config_file) {
 	ConfigFile cfg(config_file.c_str()); // save the user-defined parameter file
 	                                     // into the ConfigFile instance cfg
@@ -128,16 +117,8 @@ void Simulator::ReadUserParams(std::string config_file) {
         if (cfg.keyExists("hyetograph_interp")) {
             hyetograph_interp = cfg.getValueOfKey<bool>("hyetograph_interp");
         }
-        if (!cfg.keyExists("hyetograph_dt")) {
-            error_missing_phrase("hyetograph_dt", "hyetograph_prefix");
-        } else {
-            hyetograph_dt = cfg.getValueOfKey<double>("hyetograph_dt");
-        }
-        if (!cfg.keyExists("hyetograph_tf")) {
-            error_missing_phrase("hyetograph_tf", "hyetograph_prefix");
-        } else {
-            hyetograph_tf = cfg.getValueOfKey<double>("hyetograph_tf");
-        }
+        hyetograph_dt = cfg.getValueOfKey<double>("hyetograph_dt");
+        hyetograph_tf = cfg.getValueOfKey<double>("hyetograph_tf");
 	} else {
 		rainfall_gridded  = false;
 	} 
@@ -772,7 +753,7 @@ double Simulator::RunSimulation() {
 		Grow(dev_wet_blocks, dev_active_blocks, dev_hyetograph_gridded_rate, rainfall_gridded, dev_surge_gridded_depth, surge_gridded);
 		//std::cout << "Compute Fluxes" << std::endl; 
         ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
-		              dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
+		              dt, dev_n, 
 		              hyetograph.interpolated_rate, drain.interpolated_rate,
                       dev_hyetograph_gridded_rate,
                       dev_drain_gridded_rate,
@@ -782,7 +763,6 @@ double Simulator::RunSimulation() {
 
 		Integrate_1(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 					dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
-                    hydrograph.interpolated_rate, dambreak_source_idx,
                     hyetograph.interpolated_rate, dev_hyetograph_gridded_rate,
                     dev_surge_gridded_depth, dev_F,
                     dev_F_old, dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet,source_idx_dev, source_rate_dev,NumSources, dev_time_peak, dev_time_dry);	//added time_peak and time_dry by Youcan on 20170908
@@ -791,13 +771,12 @@ double Simulator::RunSimulation() {
 		if (!euler_integration) {
 			
 			ComputeFluxes(dev_w, dev_hu, dev_hv, dev_dw, dev_dhu, dev_dhv, dev_mx, dev_my, dev_BC, dev_BX, dev_BY, dev_G, dev_active_blocks,
-						  dt, dev_n, hydrograph.interpolated_rate, dambreak_source_idx,
+						  dt, dev_n, 
 						  hyetograph.interpolated_rate, drain.interpolated_rate,
                           dev_hyetograph_gridded_rate, dev_drain_gridded_rate,
 						  dev_F, dev_F_old, dev_dF, dev_K,source_idx_dev, source_rate_dev,NumSources);
 			Integrate_2(dev_w, dev_hu, dev_hv, dev_w_old, dev_hu_old, dev_hv_old, dev_dw, dev_dhu, dev_dhv, dev_BC,
 						dev_G, dev_wet_blocks, dev_active_blocks, t, dt,
-						hydrograph.interpolated_rate, dambreak_source_idx,
 						hyetograph.interpolated_rate, dev_hyetograph_gridded_rate, dev_F,
 						dev_F_old, dev_dF, dev_K, dev_h, dev_q, dev_h_max, dev_q_max, dev_t_wet,source_idx_dev, source_rate_dev,NumSources);
 			ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);

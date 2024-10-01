@@ -488,8 +488,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
                                 double *dhu, double *dhv, double *mx, double *my, double *BC,
                                 double *BX, double *BY, double *G, int *active_blocks,
                                 double dt, size_t pitch, size_t pitchBX,
-                                size_t pitchBY, double *n, double hydrograph_rate,
-                                int hydrograph_source,
+                                size_t pitchBY, double *n,
                                 double hyetograph_rate, double drain_rate,
                                 double *hyetograph_gridded_rate, double *drain_gridded_rate,
                                 double *F,
@@ -711,9 +710,7 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
     if (dambreak||numSources>0) {
         for (int counter = 0; counter < numSources; counter++){
             S0 = (j*nx + i == source_idx_dev[counter]) ? S0 + source_rate_dev[counter] : S0;
-            //if(S0>0.0f) printf("\nSource %g",S0);
         }
-        //S0 = (j*nx + i == hydrograph_source) ? S0 + hydrograph_rate : S0;
     }
     
     if (infiltration) {
@@ -767,15 +764,12 @@ __global__ void ComputeFluxes_k(double *w, double *hu, double *hv, double *dw,
 void ComputeFluxes(double *w, double *hu, double *hv, double *dw, double *dhu,
                    double *dhv, double *mx, double *my, double *BC, double *BX, double *BY,
                    double *G, int *active_blocks, double dt, double *n,
-                   double hydrograph_rate, int hydrograph_source,
                    double hyetograph_rate,  double drain_rate,
                    double *hyetograph_gridded_rate, double *drain_gridded_rate,
                    double *F, double *F_old, double *dF, double *K, int *source_idx_dev, double *source_rate_dev, long numSources) {
     ComputeFluxes_k <<< nBlocks, BlockDim >>> (w, hu, hv, dw, dhu, dhv, mx, my, BC,
 	                                           BX, BY, G, active_blocks, dt, pitch,
 	                                           pitchBX, pitchBY, n,
-	                                           hydrograph_rate,
-	                                           hydrograph_source,
 	                                           hyetograph_rate, drain_rate,
                                                hyetograph_gridded_rate,
                                                drain_gridded_rate,
@@ -787,7 +781,6 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
                               double *dhu, double *dhv, double *BC,
                               double *G, bool *wet_blocks, int *active_blocks,
                               double t, double dt, size_t pitch,
-                              double hydrograph_rate, int hydrograph_source,
                               double hyetograph_rate, 
                               double *hyetograph_gridded_rate,
                               double *surge_gridded_depth, double *F,
@@ -902,10 +895,6 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 			for (int counter = 0; counter < numSources; counter++){
 					wet[tidy][tidx] = (j*nx + i == source_idx_dev[counter]) ? true : wet[tidy][tidx];
 			}
-
-			//if (j*nx + i == hydrograph_source) {
-				//wet[tidy][tidx] = true;
-			//}
 		}
 
 		if (rainfall_averaged) {
@@ -960,7 +949,6 @@ __global__ void Integrate_1_k(double *w, double *hu, double *hv, double *w_old,
 void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_old,
                  double *hv_old, double *dw, double *dhu, double *dhv, double *BC,
                  double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
-                 double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate,  
                  double *hyetograph_gridded_rate,
                  double *surge_gridded_depth,
@@ -969,7 +957,6 @@ void Integrate_1(double *w, double *hu, double *hv, double *w_old, double *hu_ol
     Integrate_1_k <<< nBlocks, BlockDim >>> (w, hu, hv, w_old, hu_old, hv_old,
 	                                         dw, dhu, dhv, BC, G, wet_blocks,
 	                                         active_blocks, t, dt, pitch,
-	                                         hydrograph_rate, hydrograph_source,
 	                                         hyetograph_rate, 
                                              hyetograph_gridded_rate,
                                              surge_gridded_depth, F, F_old,
@@ -981,7 +968,6 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
                               double *dhu, double *dhv, double *BC,
                               double *G, bool *wet_blocks, int *active_blocks,
                               double t, double dt, size_t pitch,
-                              double hydrograph_rate, int hydrograph_source,
                               double hyetograph_rate, 
                               double *hyetograph_gridded_rate, double *F,
                               double *F_old, double *dF, double *K, double *h,
@@ -1062,13 +1048,9 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
     wet[tidy][tidx] = (hC > epsilon) ? true : false;
 
 	if (dambreak||numSources>0) {
-			for (int counter = 0; counter < numSources; counter++){
-					wet[tidy][tidx] = (j*nx + i == source_idx_dev[counter]) ? true : wet[tidy][tidx];
-			}
-		
-		//if (j*nx + i == hydrograph_source) {
-			//wet[tidy][tidx] = true;
-		//}
+        for (int counter = 0; counter < numSources; counter++){
+            wet[tidy][tidx] = (j*nx + i == source_idx_dev[counter]) ? true : wet[tidy][tidx];
+        }
 	}
 
 	if (rainfall_averaged) {
@@ -1114,7 +1096,6 @@ __global__ void Integrate_2_k(double *w, double *hu, double *hv, double *w_old,
 void Integrate_2(double *w, double *hu, double *hv, double *w_old, double *hu_old,
                  double *hv_old, double *dw, double *dhu, double *dhv, double *BC, 
                  double *G, bool *wet_blocks, int *active_blocks, double t, double dt,
-                 double hydrograph_rate, int hydrograph_source,
                  double hyetograph_rate,  
                  double *hyetograph_gridded_rate,
                  double *F, double *F_old, double *dF, double *K, double *h,
@@ -1122,7 +1103,6 @@ void Integrate_2(double *w, double *hu, double *hv, double *w_old, double *hu_ol
     Integrate_2_k <<< nBlocks, BlockDim >>> (w, hu, hv, w_old, hu_old, hv_old,
 	                                         dw, dhu, dhv, BC, G, wet_blocks,
 	                                         active_blocks, t, dt, pitch,
-	                                         hydrograph_rate, hydrograph_source,
 	                                         hyetograph_rate, 
                                              hyetograph_gridded_rate, F, F_old,
                                              dF, K, h, q, h_max, q_max, t_wet,source_idx_dev, source_rate_dev, numSources);
