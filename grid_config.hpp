@@ -29,6 +29,9 @@ struct GridConfig
   void ComputeCellSize(void);
 
   void ReportCellSize(std::ostream& out) const;
+
+  bool Coord2Index(const double& X, const double& Y, int& i, int& j) const;
+  
 };
 
 #endif
