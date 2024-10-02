@@ -20,15 +20,15 @@ extern "C" {TNode* Node;}
 void initializeSWMM(void);
 void closeSWMM(void);
 
-void updateSources(Simulator* sim, float flow_input);
+// void updateSources(Simulator* sim, float flow_input);
 void close2D(Simulator* sim);
 void initialize2D(Simulator* sim, std::string, float flow_input);
-void initializeSources2D(Simulator* sim);
+// void initializeSources2D(Simulator* sim);
 // void updateSources(void);
 // void close2D(void);
 // void initialize2D(std::string);
 // void initializeSources2D(void);
-void setSourceLocation(Simulator* sim);
+// void setSourceLocation(Simulator* sim);
 // void setSourceLocation(void);
 
 // float flows[1] = { 0
@@ -78,53 +78,53 @@ void close2D(Simulator* sim){
 	sim->CloseSimulation();
 }
 
-void initializeSources2D(Simulator* sim){
-	sim->InitializeSources(2);
-}
-void setSourceLocation(Simulator* sim){
-	int j;
-	for (j = 0; j <= 1; j++){
-		float x, y;
-		switch (j){
-		case 0:
-			x = -80.951499;
-			y = 34.037;
-			break; 
-		case 1:
-			x = -80.951499;
-			y = 34.037;
-			break;
+// void initializeSources2D(Simulator* sim){
+// 	sim->InitializeSources(2);
+// }
+// void setSourceLocation(Simulator* sim){
+// 	int j;
+// 	for (j = 0; j <= 1; j++){
+// 		float x, y;
+// 		switch (j){
+// 		case 0:
+// 			x = -80.951499;
+// 			y = 34.037;
+// 			break; 
+// 		case 1:
+// 			x = -80.951499;
+// 			y = 34.037;
+// 			break;
 
-		}
+// 		}
 
-		sim->SetSourceLocation(j, x, y);
-	}
-}
+// 		sim->SetSourceLocation(j, x, y);
+// 	}
+// }
 
-void updateSources(Simulator* sim, float flow_input){
-	int j;
+// void updateSources(Simulator* sim, float flow_input){
+// 	int j;
 
-	for (j = 0; j <= 1; j++){
-		float flow = flow_input;
-		switch (j){
-		case 0:
-			//This is Overcreek 
-			flow /= 35.3147f;
-			flow *= 1.0f;
-			break;
-		case 1:
+// 	for (j = 0; j <= 1; j++){
+// 		float flow = flow_input;
+// 		switch (j){
+// 		case 0:
+// 			//This is Overcreek 
+// 			flow /= 35.3147f;
+// 			flow *= 1.0f;
+// 			break;
+// 		case 1:
 
-			//This is nowhere...
-			flow /= 35.3147f;
-			flow *= .0f;
-			break;
+// 			//This is nowhere...
+// 			flow /= 35.3147f;
+// 			flow *= .0f;
+// 			break;
 
-		}
-		//std::cout << "now setting source" << std::endl;
-		sim->setSourceValue(j, flow);
-		//printf("%.2f ", Node[j].overflow);
-	}
-	sim->updateSources();
+// 		}
+// 		//std::cout << "now setting source" << std::endl;
+// 		sim->setSourceValue(j, flow);
+// 		//printf("%.2f ", Node[j].overflow);
+// 	}
+// 	sim->updateSources();
 	
-}
+// }
 
