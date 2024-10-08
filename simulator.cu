@@ -94,10 +94,22 @@ void Simulator::ReadUserParams(std::string config_file) {
 		dambreak = true;
 		hydrograph_file = cfg.getValueOfKey<std::string>("hydrograph");
 		hydrograph.ReadSource(hydrograph_file.c_str());
-		// Convert the source locations to grid coordinates
-		source_X = cfg.getValueOfKey<double>("source_X");
-		source_Y = cfg.getValueOfKey<double>("source_Y");
-		std::cout << "X location is  " << source_X << " and Y location is " << source_Y << std::endl; 
+
+        if (cfg.keyExists("source_rect_X")) {
+            source_X = cfg.getValueOfKey<std::complex<double>>("source_rect_X");
+            source_Y = cfg.getValueOfKey<std::complex<double>>("source_rect_Y");
+        } else if (cfg.keyExists("source_pt")) {
+            std::complex<double> pt = cfg.getValueOfKey< std::complex<double> >("source_pt");
+            source_X = std::complex<double>(pt.real(), pt.real());
+            source_Y = std::complex<double>(pt.imag(), pt.imag());
+        } else {
+            double X(cfg.getValueOfKey<double>("source_X"));
+            double Y(cfg.getValueOfKey<double>("source_Y"));
+            source_X = std::complex<double>(X, X);
+            source_Y = std::complex<double>(Y, Y);
+        }
+		std::cout << "X location is  " << source_X
+                  << " and Y location is " << source_Y << std::endl; 
 	} else {
 		dambreak = false;
         NumSources = 0;
@@ -281,19 +293,13 @@ void Simulator::InitSimulation(void) {
 	
 	
     
-		if (dambreak) {
-					std::cout << "This is a dam break" << std::endl; 
-
-			NumSources = 1;
-			InitializeSources(NumSources);
-			int j;
-			for (j=0; j<NumSources;j++){
-				SetSourceLocation(j,source_X,source_Y);
-			}
-        } else {
-            NumSources = 0;
-        }
-
+    if (dambreak) {
+        std::cout << "This is a dam break" << std::endl; 
+        InitializeSources();
+    } else {
+        NumSources = 0;
+    }
+    
 	SetDeviceConstants(grid_config.h_nx, grid_config.h_ny,
                        grid_config.h_dx, grid_config.h_dy,
                        kappa, grid_config.nodata);
@@ -483,7 +489,7 @@ void Simulator::UpdateSource(void) {
 		hydrograph.interpolated_rate /= 35.3147f;
 		//std::cout << "getting discharge height m " << hydrograph.interpolated_rate << std::endl; 
                 //
-		setSourceValue(0,hydrograph.interpolated_rate);
+		setSourceValue(hydrograph.interpolated_rate);
 		
 		/*if (check_volume) {
 			V_added += hydrograph.interpolated_rate * dt;
@@ -822,41 +828,47 @@ double Simulator::RunSimulation() {
 	Changes for 1D-2D
 
 	*/
-void Simulator::InitializeSources(long numSources){
-	NumSources = numSources; //set the public variable
-	source_idx = (int*)malloc(numSources*sizeof(int));
-	f_source_idx = 1;
-	source_rate = (double*)malloc(numSources*sizeof(double));
-	f_source_rate = 1;
-	memset(source_idx,0,numSources*sizeof(int));
-	memset(source_rate,0,numSources*sizeof(double));
-	checkCudaErrors(cudaMalloc((void**)&source_idx_dev,numSources*sizeof(int)));
-	checkCudaErrors(cudaMalloc((void**)&source_rate_dev,numSources*sizeof(double)));
-	
-}
+void Simulator::InitializeSources(){
+	int imin, imax, jmin, jmax;
 
-void Simulator::SetSourceLocation(int i,double X, double Y){
-	source_x = (int)((X-grid_config.h_xll) / grid_config.cellsize_original + 0.5);
-	std::cout << "source_x is  " << source_x << std::endl; 
-	std::cout << "X is  " << X << std::endl;
+    
+    grid_config.Coord2Index(source_X.real(), source_Y.real(), imin, jmin);
+    grid_config.Coord2Index(source_X.imag(), source_Y.imag(), imax, jmax);
+
+	NumSources = (imax - imin + 1)*(jmax - jmin + 1);
+	source_idx = (int*)malloc(NumSources*sizeof(int));
+	f_source_idx = 1;
+	source_rate = (double*)malloc(NumSources*sizeof(double));
+	f_source_rate = 1;
+	memset(source_idx,0,NumSources*sizeof(int));
+	memset(source_rate,0,NumSources*sizeof(double));
+	checkCudaErrors(cudaMalloc((void**)&source_idx_dev,NumSources*sizeof(int)));
+	checkCudaErrors(cudaMalloc((void**)&source_rate_dev,NumSources*sizeof(double)));
+
+	std::cout << "source_x is  " << imin << "-" << imax << std::endl; 
+	std::cout << "X is  " << source_X.real() << std::endl;
 	std::cout << "h_xll is  " << grid_config.h_xll << std::endl;
 	std::cout << "cellsize_original is  " << grid_config.cellsize_original << std::endl;
-	source_y = (int)((Y-grid_config.h_yll) / grid_config.cellsize_original + 0.5);
-	std::cout << "Y location is  " << source_y << std::endl; 
-	int idx = source_y*grid_config.h_nx + source_x;
-	std::cout << "hnx is  " << grid_config.h_nx << " idx is " << idx << std::endl;
-	source_idx[i] =  idx;
-		
+	std::cout << "Y location is  " << jmin << "-" << jmax << std::endl;
+
+    int n(0);
+    for (int i = imin; i <= imax; ++i) {
+        for (int j = jmin; j <= jmax; ++j, ++n) {
+            int idx = j*grid_config.h_nx + i;
+            std::cout << "hnx is  " << grid_config.h_nx << " idx is " << idx << std::endl;
+            source_idx[n] =  idx;
+        }
+    }
 }
 
-void Simulator::setSourceValue (int i, double value){
-	
-
-	source_rate[i] = value/grid_config.h_dx/grid_config.h_dy;
-	//std::cout << source_rate[i] <<std::endl;
-	if (check_volume) {
-		V_added += source_rate[i] * dt;
-	}
+void Simulator::setSourceValue (double value)
+{
+    for (int i = 0; i < NumSources; ++i) {
+        source_rate[i] = value/grid_config.h_dx/grid_config.h_dy/NumSources;
+        if (check_volume) {
+            V_added += source_rate[i] * dt;
+        }
+    }
 	
 	//printf("\nsource %g",source_rate[i]);
 }

@@ -106,16 +106,9 @@ bool GridConfig::Coord2Index(const double& X, const double& Y, int& i, int& j) c
   bool ok(true);
   
   i = (int)((X - h_xll) / cellsize_original + 0.5);
-  std::cout << "source_x is  " << i << std::endl; 
-  std::cout << "X is  " << X << std::endl;
-  std::cout << "h_xll is  " << h_xll << std::endl;
-  std::cout << "cellsize_original is  " << cellsize_original << std::endl;
-
   if (i < 2 || i > h_nx - 2) ok = false;
   
   j = (int)((Y - h_yll) / cellsize_original + 0.5);
-  std::cout << "Y location is  " << j << std::endl;
-
   if (j < 2 || i > h_ny - 2) ok = false;
 
   return(ok);

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <complex>
 #include <sys/time.h>
 //#include <time.h>		// for windows, Youcan
 #include "source.h"
@@ -71,10 +72,7 @@ public:
 	bool dambreak;               // specifies if a dam breach occurs
 	Source hydrograph;           // hydrograph describing the dam breach (s, m^3)
 	std::string hydrograph_file; // location of the hydrograph file
-	double source_X;
-	double source_Y;
-	int source_x;
-	int source_y;
+    std::complex<double> source_X, source_Y;
 	
 	/** Added for 1D-2D*/
 	int *source_idx, *source_idx_dev;
@@ -132,9 +130,8 @@ public:
 	double RunSimulation();  // runs the simulation
 	void OpenSimulation(std::string config_file, double flowrate);
 	void CloseSimulation(void);
-	void InitializeSources(long numSources);
-	void SetSourceLocation(int i,double X, double Y);
-	void setSourceValue (int i, double value);
+	void InitializeSources(void);
+	void setSourceValue (double value);
 	void updateSources();
 	long NumSources;
 	int count;
