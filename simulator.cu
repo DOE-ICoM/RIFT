@@ -129,7 +129,7 @@ void Simulator::ReadUserParams(std::string config_file) {
         if (cfg.keyExists("hyetograph_interp")) {
             hyetograph_interp = cfg.getValueOfKey<bool>("hyetograph_interp");
         } else {
-            hydrograph_interp = false;
+            hyetograph_interp = false;
         }
         hyetograph_dt = cfg.getValueOfKey<double>("hyetograph_dt");
         hyetograph_tf = cfg.getValueOfKey<double>("hyetograph_tf");
