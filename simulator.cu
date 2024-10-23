@@ -44,7 +44,7 @@ void Simulator::ReadUserParams(std::string config_file) {
 		output_file = cfg.getValueOfKey<std::string>("output");
 	}
 	else {
-		output_file = "c:/temp/";
+		output_file = "./";
 	}
 
     n_gridded = false;
@@ -128,6 +128,8 @@ void Simulator::ReadUserParams(std::string config_file) {
 		hyetograph_prefix = cfg.getValueOfKey<std::string>("hyetograph_prefix");
         if (cfg.keyExists("hyetograph_interp")) {
             hyetograph_interp = cfg.getValueOfKey<bool>("hyetograph_interp");
+        } else {
+            hydrograph_interp = false;
         }
         hyetograph_dt = cfg.getValueOfKey<double>("hyetograph_dt");
         hyetograph_tf = cfg.getValueOfKey<double>("hyetograph_tf");
