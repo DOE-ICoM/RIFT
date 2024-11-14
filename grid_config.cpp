@@ -113,3 +113,60 @@ bool GridConfig::Coord2Index(const double& X, const double& Y, int& i, int& j) c
 
   return(ok);
 }  
+
+
+// -------------------------------------------------------------
+// GridConfig::write
+//
+// Write instance to (binary) file
+// -------------------------------------------------------------
+void
+GridConfig::write(std::ostream& ofile)
+{
+  
+  ofile.write(reinterpret_cast<char*>(&b_nx), sizeof(int));
+  ofile.write(reinterpret_cast<char*>(&b_ny), sizeof(int));
+  ofile.write(reinterpret_cast<char*>(&b_xll), sizeof(double));
+  ofile.write(reinterpret_cast<char*>(&b_yll), sizeof(double));
+  ofile.write(reinterpret_cast<char*>(&cellsize_original), sizeof(double));
+
+  ofile.write(reinterpret_cast<char*>(&h_nx), sizeof(int));
+  ofile.write(reinterpret_cast<char*>(&h_ny), sizeof(int));
+  ofile.write(reinterpret_cast<char*>(&h_xll), sizeof(double));
+  ofile.write(reinterpret_cast<char*>(&h_yll), sizeof(double));
+  ofile.write(reinterpret_cast<char*>(&cellsize), sizeof(double));
+  ofile.write(reinterpret_cast<char*>(&h_dx), sizeof(double));
+  ofile.write(reinterpret_cast<char*>(&h_dy), sizeof(double));
+  
+  ofile.write(reinterpret_cast<char*>(&square_cells), sizeof(bool));
+  ofile.write(reinterpret_cast<char*>(&projected), sizeof(bool));
+}
+
+// -------------------------------------------------------------
+// GridConfig::read
+//
+// Read instance from (binary) file
+// -------------------------------------------------------------
+void
+GridConfig::read(std::istream& ifile, bool& square_cells, bool& projected)
+{
+
+  ifile.read(reinterpret_cast<char*>(&b_nx), sizeof(int));
+  ifile.read(reinterpret_cast<char*>(&b_ny), sizeof(int));
+  ifile.read(reinterpret_cast<char*>(&b_xll), sizeof(double));
+  ifile.read(reinterpret_cast<char*>(&b_yll), sizeof(double));
+  ifile.read(reinterpret_cast<char*>(&cellsize_original), sizeof(double));
+
+  ifile.read(reinterpret_cast<char*>(&h_nx), sizeof(int));
+  ifile.read(reinterpret_cast<char*>(&h_ny), sizeof(int));
+  ifile.read(reinterpret_cast<char*>(&h_xll), sizeof(double));
+  ifile.read(reinterpret_cast<char*>(&h_yll), sizeof(double));
+  ifile.read(reinterpret_cast<char*>(&cellsize), sizeof(double));
+  ifile.read(reinterpret_cast<char*>(&h_dx), sizeof(double));
+  ifile.read(reinterpret_cast<char*>(&h_dy), sizeof(double));
+
+  ifile.read(reinterpret_cast<char*>(&square_cells), sizeof(bool));
+  ifile.read(reinterpret_cast<char*>(&projected), sizeof(bool));
+
+}
+  

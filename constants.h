@@ -9,6 +9,7 @@ const double  h_epsilon = 1.19209e-07f;
 const double pi        = 3.14159265358979324;
 
 extern int GridSize;
+extern size_t GrowGridSize;
 
 extern size_t pitch, pitchBX, pitchBY;
 extern dim3 BlockDim,  GridDim;

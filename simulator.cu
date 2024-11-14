@@ -201,6 +201,12 @@ void Simulator::ReadUserParams(std::string config_file) {
 		check_volume = false;
 	}
 
+    if (cfg.keyExists("save_hotstart")) {
+        save_hotstart = cfg.getValueOfKey<bool>("save_hotstart");
+    } else {
+        save_hotstart = false;
+    }
+
 	if (h_print || q_print || ws_print || check_volume) {
 		t_print     = t0;
 		dt_print    = cfg.getValueOfKey<double>("dt_print");
@@ -581,6 +587,10 @@ void Simulator::PrintData(void) {
         writeGrid(filename_h.str(), h_ws.get(), grid_config);
     }
 
+    if (save_hotstart) {
+        WriteHotstart();
+    }
+
     if (drain_averaged) {
         std::cout << "Drain Rate: " << drain.interpolated_rate << std::endl;
     }
@@ -881,6 +891,131 @@ void Simulator::updateSources(){
 	//std::cout << "updated the source" << std::endl;
 }
 
+// -------------------------------------------------------------
+// Simulator::WriteHotstart
+// -------------------------------------------------------------
+void
+Simulator::WriteHotstart() 
+{
+    std::stringstream filename;
+    filename << output_file << "/hot" << count_print << ".bin";
+    
+    std::ofstream ofile;
+    ofile.open(filename.str(), std::ios::binary);
+
+    if (!ofile.good()) {
+        std::string msg;
+        msg = "Cannot open open hotstart file \"";
+        msg += filename.str();
+        msg += "\" for writing";
+        throw std::runtime_error(msg);
+    }
+    
+    ofile.write(reinterpret_cast<char*>(&t), sizeof(double));
+    ofile.write(reinterpret_cast<char*>(&dt), sizeof(double));
+    
+    grid_config.write(ofile);
+
+    {
+        std::unique_ptr<double[]>
+            buffer(new double[grid_config.h_nx * grid_config.h_ny]);
+        std::vector<double *> dev_ptr = { dev_w, dev_hu, dev_hv, dev_F };
+        for (auto i = dev_ptr.begin(); i != dev_ptr.end(); ++i) {
+            if (*i != NULL) {
+                checkCudaErrors(cudaMemcpy2D(&buffer[0], grid_config.h_nx*sizeof(double),
+                                             *i, pitch,
+                                             grid_config.h_nx*sizeof(double),
+                                             grid_config.h_ny, DtoH));
+                ofile.write(reinterpret_cast<char*>(&buffer[0]),
+                            grid_config.h_nx*grid_config.h_ny*sizeof(double));
+            }
+        }
+    }
+
+    {
+        std::unique_ptr<bool[]> bbuf(new bool[GrowGridSize]);
+        checkCudaErrors(cudaMemcpy(reinterpret_cast<void*>(&(bbuf[0])),
+                                   dev_wet_blocks,
+                                   GrowGridSize*sizeof(bool), DtoH));
+        ofile.write(reinterpret_cast<char*>(&(bbuf[0])),
+                    GrowGridSize*sizeof(bool));
+    }
+
+    {
+        std::unique_ptr<int[]> ibuf(new int[GrowGridSize]);
+        checkCudaErrors(cudaMemcpy(&(ibuf[0]), dev_active_blocks,
+                                   GrowGridSize*sizeof(int), DtoH));
+        ofile.write(reinterpret_cast<char*>(&(ibuf[0])),
+                    GrowGridSize*sizeof(int));
+    }
+        
+    ofile.close();
+}
+
+
+// -------------------------------------------------------------
+// Simulator::ReadHotstart
+// -------------------------------------------------------------
+void
+Simulator::ReadHotstart(const std::string& filename)
+{
+    std::ifstream ifile;
+    ifile.open(filename, std::ios::binary|std::ios::in);
+
+    if (!ifile.good()) {
+        std::string msg;
+        msg = "Cannot open open hotstart file \"";
+        msg += filename;
+        msg += "\" for reading";
+        throw std::runtime_error(msg);
+    }
+
+    ifile.read(reinterpret_cast<char*>(&t), sizeof(double));
+    ifile.read(reinterpret_cast<char*>(&dt), sizeof(double));
+
+    GridConfig tmpgc;
+    bool square, projected;
+
+    tmpgc.read(ifile, square, projected);
+
+    std::cout << "Using hotstart \"" << filename << "\"" 
+              << " created at simulation time " << t << std::endl
+              << "Time step = " << dt << std::endl;
+    {
+        
+        std::vector<double> buffer(grid_config.h_nx * grid_config.h_ny);
+        std::vector<double *> dev_ptr = { dev_w, dev_hu, dev_hv, dev_F };
+        for (auto i = dev_ptr.begin(); i != dev_ptr.end(); ++i) {
+            if (*i != NULL) {
+                ifile.read(reinterpret_cast<char*>(&buffer[0]),
+                           buffer.size()*sizeof(double));
+                checkCudaErrors(cudaMemcpy2D(*i, pitch,
+                                             &buffer[0],
+                                             grid_config.h_nx*sizeof(double),
+                                             grid_config.h_nx*sizeof(double),
+                                             grid_config.h_ny, HtoD));
+            }
+        }
+    }
+        
+    {
+        std::unique_ptr<bool[]> bbuf(new bool[GrowGridSize]);
+        ifile.read(reinterpret_cast<char*>(&(bbuf[0])),
+                   GrowGridSize*sizeof(bool));
+        checkCudaErrors(cudaMemcpy(dev_wet_blocks, &(bbuf[0]),
+                                   GrowGridSize*sizeof(bool), HtoD));
+    }
+    
+    {
+        std::unique_ptr<int[]> ibuf(new int[GrowGridSize]);
+        ifile.read(reinterpret_cast<char*>(&(ibuf[0])),
+                   GrowGridSize*sizeof(int));
+        checkCudaErrors(cudaMemcpy(dev_active_blocks, &(ibuf[0]), 
+                                   GrowGridSize*sizeof(int), HtoD));
+    }
+
+    ifile.close();
+}    
 /* Local variables: */
 /* mode: c++ */
 /* tab-width: 4 */

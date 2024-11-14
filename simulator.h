@@ -60,6 +60,7 @@ public:
 	bool  q_print;           // specifies if discharge data should be printed
 	bool  save_max;          // specifies if maximal data should be printed
 	bool  save_arrival_time; // specifies if arrival time data should be printed
+    bool  save_hotstart; 
 	bool steady_state;
 	double t_print;           // time used to track output file creation (s)
 	double dt_print;          // timestep between output files (s) (defined by user)
@@ -141,6 +142,9 @@ public:
 
 	void   StartTimer(void); // starts simulation timer
 	double EndTimer(void);   // ends simulation timer
+
+    void WriteHotstart(void);
+    void ReadHotstart(const std::string& filename);
 
 	// Variables (moving here - previous global variables)
 	// Define host arrays

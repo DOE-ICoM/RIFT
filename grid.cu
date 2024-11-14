@@ -34,6 +34,7 @@ dim3 BlockDimX, GridDimX;
 dim3 BlockDimY, GridDimY;
 int nBlocks;
 int GridSize;
+size_t GrowGridSize;
 dim3 GrowGrid;
 
 size_t pitch, pitchBX, pitchBY;
@@ -399,7 +400,7 @@ std::endl;
     GrowGrid.x = ceil((double)GridDim.x / (double)BlockDim.x);
     GrowGrid.y = ceil((double)GridDim.y / (double)BlockDim.y);
 
-    size_t GrowGridSize = (GrowGrid.x*BLOCK_COLS)*(GrowGrid.y*BLOCK_ROWS);
+    GrowGridSize = (GrowGrid.x*BLOCK_COLS)*(GrowGrid.y*BLOCK_ROWS);
 
     checkCudaErrors(cudaMalloc((void**)&wet_blocks,    GrowGridSize*sizeof(bool) ));
     checkCudaErrors(cudaMalloc((void**)&active_blocks, GrowGridSize*sizeof(int)  ));

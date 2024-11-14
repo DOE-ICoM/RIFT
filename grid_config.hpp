@@ -10,7 +10,7 @@
 #ifndef _grid_config_hpp_
 #define _grid_config_hpp_
 
-#include <ostream>
+#include <iostream>
 
 struct GridConfig 
 {
@@ -31,6 +31,10 @@ struct GridConfig
   void ReportCellSize(std::ostream& out) const;
 
   bool Coord2Index(const double& X, const double& Y, int& i, int& j) const;
+
+  void write(std::ostream& fout);
+
+  void read(std::istream& ifile, bool& square_cells, bool& projected);
   
 };
 
