@@ -207,6 +207,12 @@ void Simulator::ReadUserParams(std::string config_file) {
         save_hotstart = false;
     }
 
+    if (cfg.keyExists("read_hotstart")) {
+        read_hotstart = cfg.getValueOfKey<std::string>("read_hotstart");
+    } else {
+        read_hotstart.clear();
+    }
+
 	if (h_print || q_print || ws_print || check_volume) {
 		t_print     = t0;
 		dt_print    = cfg.getValueOfKey<double>("dt_print");
@@ -712,6 +718,10 @@ std::cout<<"inside the opend simulation" << std::endl;
 	ReadUserParams(filename);
 	std::cout<< "read the user parameters" <<std::endl;
     InitSimulation();
+
+    if (!read_hotstart.empty()) {
+        ReadHotstart(read_hotstart);
+    }
 	std::cout<< "initialized the simulation" << std::endl;
     ApplyBoundaries(dev_w, dev_hu, dev_hv, dev_BC);
 	count = 0;
@@ -977,6 +987,8 @@ Simulator::ReadHotstart(const std::string& filename)
     bool square, projected;
 
     tmpgc.read(ifile, square, projected);
+
+    // check to make sure the domain is the sam
 
     std::cout << "Using hotstart \"" << filename << "\"" 
               << " created at simulation time " << t << std::endl
