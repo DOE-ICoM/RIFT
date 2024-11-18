@@ -990,9 +990,64 @@ Simulator::ReadHotstart(const std::string& filename)
 
     // check to make sure the domain is the sam
 
+    {
+        bool ok(true);          // be hopeful
+
+        if (tmpgc.b_nx != grid_config.b_nx ||
+            tmpgc.b_ny != grid_config.b_ny) {
+            std::cerr << "Incorrect hotstart domain size ("
+                      << tmpgc.b_nx << "x" << tmpgc.b_ny << ")"
+                      << std::endl;
+            ok = false;
+        }
+        
+        if (tmpgc.h_dx != grid_config.h_dx ||
+            tmpgc.h_dy != grid_config.h_dy) {
+            std::cerr << "Incorrect hotstart internal cell sizes ("
+                      << tmpgc.h_dx << " x " << tmpgc.h_dy << ")"
+                      << std::endl;
+            ok = false;
+        }
+        
+
+        if (tmpgc.cellsize_original != grid_config.cellsize_original) {
+            std::cerr << "Incorrect hotstart original cell size:"
+                      << "(" << tmpgc.cellsize_original
+                      << " != " << grid_config.cellsize_original
+                      << std::endl;
+            ok = false;
+        }
+            
+        if (tmpgc.cellsize != grid_config.cellsize) {
+            std::cerr << "Incorrect hotstart cell size:"
+                      << "(" << tmpgc.cellsize
+                      << " != " << grid_config.cellsize
+                      << std::endl;
+            ok = false;
+        }
+
+        if (square != grid_config.square_cells ||
+            projected != grid_config.projected) {
+            std::cerr << "Hotstart domain flag mismatch: " << std::endl
+                      << "   square_cells = "
+                      << (square ? 1 : 0)
+                      << "(vs " << (grid_config.square_cells ? 1 : 0) << ")"
+                      << std::endl
+                      << "   projected = "
+                      << (projected ? 1 : 0)
+                      << "(vs " << (grid_config.projected ? 1 : 0) << ")"
+                      << std::endl;
+            ok = false;
+        }
+        
+        if (!ok) {
+            throw std::runtime_error("Invalid hotstart");
+        }
+    }
+
     std::cout << "Using hotstart \"" << filename << "\"" 
               << " created at simulation time " << t << std::endl
-              << "Time step = " << dt << std::endl;
+              << "    Previous time step = " << dt << std::endl;
     {
         
         std::vector<double> buffer(grid_config.h_nx * grid_config.h_ny);
