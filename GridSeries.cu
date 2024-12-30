@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2024-09-24 09:10:32 d3g096
+// Last Change: 2024-12-30 11:22:55 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -150,9 +150,11 @@ GridSeries::p_update(const double& t)
   
   if (p_in_time < 0.0) {
     p_in_time = t;
-    index = trunc(p_in_time/p_in_dt);
-    p_read_grid(index);
-    sendit = true;
+    if (p_in_time < p_max_time) {
+      index = trunc(p_in_time/p_in_dt);
+      p_read_grid(index);
+      sendit = true;
+    }
   }
 
   // after the maximum time is reached, just fill w/ zeroes
