@@ -4,7 +4,7 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2024-12-30 11:22:55 d3g096
+// Last Change: 2024-12-31 07:16:37 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -275,8 +275,8 @@ HyetographGridSeries::p_update(const double& t)
     index = trunc(p_in_time/p_in_dt);
     p_read_grid(index);
     this->p_copy_to_dev();
-    p_sum_cache = GridSeries::p_sum();
   }
+  p_sum_cache = GridSeries::p_sum();
 }
 
 // -------------------------------------------------------------
