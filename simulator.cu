@@ -213,10 +213,15 @@ void Simulator::ReadUserParams(std::string config_file) {
         read_hotstart.clear();
     }
 
-	if (h_print || q_print || ws_print || check_volume) {
+	if (h_print || q_print || ws_print || check_volume || save_hotstart) {
 		t_print     = t0;
 		dt_print    = cfg.getValueOfKey<double>("dt_print");
-		count_print = 0;
+
+        // Always start output numbering at zero
+        count_print = 0;
+        
+        // Maybe this is better? 
+		// count_print = t0/dt_print;
 	}
 
     if (cfg.keyExists("b_print")) {
