@@ -213,6 +213,91 @@ __device__ void getHY(double wp,   double hup,   double hvp,
     my = fmaxf(bp, -bm);
 }
 
+// -------------------------------------------------------------
+// SumReduce_k
+// -------------------------------------------------------------
+__global__ void
+SumReduce_k(size_t pitch, int nxblk, double *x_dev, double *result)
+{
+  extern __shared__ double sdata[];
+  
+  int tidx = threadIdx.x;
+  int tidy = threadIdx.y;
+
+  int bidx = blockIdx.x;
+  int bidy = blockIdx.y;
+
+  if (tidx == 0 && tidy == 0) {
+      int ridx(blockIdx.y*nxblk + blockIdx.x);
+      result[ridx] = 0.0;
+  }
+
+  int i = blockIdx.x*BLOCK_COLS + threadIdx.x + 2;
+  int j = blockIdx.y*BLOCK_ROWS + threadIdx.y + 2;
+
+  if (i > nx-3 || j > ny-3) {
+    sdata[tidy*BLOCK_COLS + tidx] = 0.0;
+  } else {
+    double *x = getElement(x_dev, pitch, j, i);
+    sdata[tidy*BLOCK_COLS + tidx] = *x;
+  }
+  
+  // printf("tidx = %d, tidy = %d, bidx = %d, bidy = %d, i = %d, j = %d, x = %lg\n",
+  //        tidx, tidy, bidx, bidy, i, j, sdata[tidy*BLOCK_COLS + tidx]);
+
+  __syncthreads();
+
+  if (tidx == 0) {
+    for (int k = 1; k < blockDim.x; k++) {
+      sdata[tidy*BLOCK_COLS + 0] += sdata[tidy*BLOCK_COLS + k];
+      // printf("tidx = %d, tidy = %d, sdata[tidy][0] = %f\n",
+      //        tidx, tidy, sdata[tidy*BLOCK_COLS + k]);
+    }
+  }
+
+  __syncthreads();
+  
+  if (tidx == 0 && tidy == 0) {
+    for (int l = 1; l < blockDim.y; l++) {
+      sdata[0*BLOCK_COLS + 0] += sdata[l*BLOCK_COLS + 0];
+    }
+    int ridx(blockIdx.y*nxblk + blockIdx.x);
+    result[ridx] = sdata[0*BLOCK_COLS + 0];
+    // printf("GPU: Result[%d]= %f\n", ridx, sdata[0]);
+  }
+  
+  __syncthreads();
+}
+
+double
+SumReduce(double *x_dev)
+{
+  std::unique_ptr<double[]> result_host(new double[GridDim.x*GridDim.y]);
+  std::uninitialized_fill(&result_host[0], &result_host[0] + GridDim.x*GridDim.y, 0.0);
+  double *result_dev;
+
+  checkCudaErrors(cudaMalloc((void**)&result_dev, GridDim.x*GridDim.y*sizeof(double)));
+  checkCudaErrors(cudaMemcpy(result_dev,  &result_host[0], GridDim.x*GridDim.y*sizeof(double),
+                             cudaMemcpyHostToDevice));
+
+  SumReduce_k <<< GridDim, BlockDim, BLOCK_ROWS*BLOCK_COLS*sizeof(double) >>>
+    (pitch, GridDim.x, x_dev, result_dev);
+  
+  cudaMemcpy(&result_host[0], result_dev,  GridDim.x*GridDim.y*sizeof(double),
+             cudaMemcpyDeviceToHost);
+
+  int result(0.0);
+  for (int i = 0; i < GridDim.x*GridDim.y; ++i) {
+    // std::cout << "CPU: Result[" << i << "] = " << result_host[i] << std::endl;
+    result += result_host[i];
+  }
+
+  checkCudaErrors(cudaFree(result_dev));
+
+  return result;
+
+}
+
 __global__ void InterpGrid_k(double factor, size_t pitch,
                              double *x0_dev, double *x1_dev, double *x_dev)
 {
