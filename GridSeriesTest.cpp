@@ -5,6 +5,7 @@
 // Created August 25, 2023 by Perkins
 // -------------------------------------------------------------
 
+#include <iomanip>
 #include <iostream>
 #include <libgen.h>
 #include <unistd.h>
@@ -26,7 +27,7 @@ main(int argc, char **argv)
   
   std::string progname(basename(argv[0]));
   std::string usage(progname);
-  usage += " [-i] [-H] [-T tmax] [-d i_dt] [-s o_dt] dem basename";
+  usage += " [-i] [-H] [-T tmax] [-d i_dt] [-s o_dt] [-T tmax] dem basename";
 
   bool dohyetograph(false);
   bool dointerp(false);
@@ -101,7 +102,9 @@ main(int argc, char **argv)
   for (double t = 0; t <= tmax; t += outstep) {
     g->update(t);
     std::cout << "Time = " << t << ", "
-              << "Sum = " << g->sum()
+              << "Device = " << std::setprecision(8) << g->sum(true)
+              << ", "
+              << "Host = " << std::setprecision(8) << g->sum(false)
               << std::endl;
   }    
 

@@ -4,7 +4,6 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2024-12-31 07:16:37 d3g096
 // -------------------------------------------------------------
 
 #include <iostream>
@@ -22,8 +21,6 @@
 #include "io.h"
 #include "grid.h"
 #include "GridSeries.cuh"
-
-
 
 
 // -------------------------------------------------------------
@@ -88,6 +85,7 @@ GridSeries::p_grid_name(const int& index) const
 
 // -------------------------------------------------------------
 // GridSeries::p_interp
+// *Spatial* interpolation
 // -------------------------------------------------------------
 void
 GridSeries::p_interp(void)
@@ -180,15 +178,20 @@ GridSeries::p_update(const double& t)
 }
 
 // -------------------------------------------------------------
-// GridSeries::p_sum
+// GridSeries::p_sum_dev
 // -------------------------------------------------------------
 double
-GridSeries::p_sum(void) const
+GridSeries::p_sum_dev(void) const
 {
-  // FIXME: do this on the device
+  return (SumReduce(p_current_dev));
+}
 
-  // return (ReduceSumGrid(p_current_dev));
-
+// -------------------------------------------------------------
+// GridSeries::p_sum_host
+// -------------------------------------------------------------
+double
+GridSeries::p_sum_host(void) const
+{
   std::unique_ptr<double[]> tmp(new double[p_gc.h_nx*p_gc.h_ny]);
   checkCudaErrors(cudaMemcpy2D(tmp.get(), p_gc.h_nx*sizeof(double), p_current_dev,
                                pitch, p_gc.h_nx*sizeof(double), p_gc.h_ny, DtoH));
@@ -270,20 +273,20 @@ HyetographGridSeries::p_update(const double& t)
   // the sum can be computed and cached
   if (t >= p_max_time) {
     GridSeries::p_update(t);
-  } else if (t > (p_in_time)) {
+  } else if (t >= (p_in_time)) {
     p_in_time += p_in_dt;
     index = trunc(p_in_time/p_in_dt);
     p_read_grid(index);
     this->p_copy_to_dev();
+    p_sum_cache = GridSeries::p_sum();
   }
-  p_sum_cache = GridSeries::p_sum();
 }
 
 // -------------------------------------------------------------
 // HyetographGridSeries::p_sum
 // -------------------------------------------------------------
 double
-HyetographGridSeries::p_sum(void) const
+HyetographGridSeries::p_sum(const bool use_dev) const
 {
   return p_sum_cache;
 }

@@ -224,18 +224,10 @@ SumReduce_k(size_t pitch, int nxblk, double *x_dev, double *result)
   int tidx = threadIdx.x;
   int tidy = threadIdx.y;
 
-  int bidx = blockIdx.x;
-  int bidy = blockIdx.y;
-
-  if (tidx == 0 && tidy == 0) {
-      int ridx(blockIdx.y*nxblk + blockIdx.x);
-      result[ridx] = 0.0;
-  }
-
   int i = blockIdx.x*BLOCK_COLS + threadIdx.x + 2;
   int j = blockIdx.y*BLOCK_ROWS + threadIdx.y + 2;
 
-  if (i > nx-3 || j > ny-3) {
+  if (i < 2 || j < 2 || i > nx-3 || j > ny-3) {
     sdata[tidy*BLOCK_COLS + tidx] = 0.0;
   } else {
     double *x = getElement(x_dev, pitch, j, i);
@@ -272,21 +264,20 @@ SumReduce_k(size_t pitch, int nxblk, double *x_dev, double *result)
 double
 SumReduce(double *x_dev)
 {
-  std::unique_ptr<double[]> result_host(new double[GridDim.x*GridDim.y]);
-  std::uninitialized_fill(&result_host[0], &result_host[0] + GridDim.x*GridDim.y, 0.0);
-  double *result_dev;
+    std::vector<double> result_host(GridDim.x*GridDim.y, 0.0);
+    double *result_dev;
 
-  checkCudaErrors(cudaMalloc((void**)&result_dev, GridDim.x*GridDim.y*sizeof(double)));
-  checkCudaErrors(cudaMemcpy(result_dev,  &result_host[0], GridDim.x*GridDim.y*sizeof(double),
-                             cudaMemcpyHostToDevice));
+    checkCudaErrors(cudaMalloc((void**)&result_dev, GridDim.x*GridDim.y*sizeof(double)));
+    checkCudaErrors(cudaMemcpy(result_dev,  &result_host[0], GridDim.x*GridDim.y*sizeof(double),
+                               cudaMemcpyHostToDevice));
 
-  SumReduce_k <<< GridDim, BlockDim, BLOCK_ROWS*BLOCK_COLS*sizeof(double) >>>
-    (pitch, GridDim.x, x_dev, result_dev);
+  SumReduce_k <<< GridDim, BlockDim, BLOCK_COLS*BLOCK_ROWS*sizeof(double) >>>
+      (pitch, GridDim.x, x_dev, result_dev);
   
   cudaMemcpy(&result_host[0], result_dev,  GridDim.x*GridDim.y*sizeof(double),
              cudaMemcpyDeviceToHost);
 
-  int result(0.0);
+  double result(0.0);
   for (int i = 0; i < GridDim.x*GridDim.y; ++i) {
     // std::cout << "CPU: Result[" << i << "] = " << result_host[i] << std::endl;
     result += result_host[i];

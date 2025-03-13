@@ -4,7 +4,6 @@
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // Created August 24, 2023 by Perkins
-// Last Change: 2024-09-24 09:09:15 d3g096
 // -------------------------------------------------------------
 
 
@@ -42,9 +41,9 @@ public:
   }
 
   /// Sum the entire current grid
-  double sum(void) const
+  double sum(const bool use_dev = true) const
   {
-    return(this->p_sum());
+    return this->p_sum(use_dev);
   }
 
   /// Get the on-device buffer
@@ -77,8 +76,17 @@ protected:
   /// Update grid series to specified time (specialized)
   virtual void p_update(const double& t);
 
+  /// Sum the entire current grid (on device)
+  virtual double p_sum_dev(void) const;
+
+  /// Sum the entire current grid (on host)
+  virtual double p_sum_host(void) const;
+
   /// Sum the entire current grid
-  virtual double p_sum(void) const;
+  virtual double p_sum(const bool use_dev = true) const
+  {
+    return (use_dev ? p_sum_dev() : p_sum_host());
+  }
 
   /// Initialize the device buffer(s) with default value
   virtual void p_init_dev(void);
@@ -163,7 +171,7 @@ protected:
   void p_update(const double& t);
 
   /// Sum the entire current grid
-  double p_sum(void) const;
+  double p_sum(const bool use_dev) const;
 
   /// Cache of current map's sum
   double p_sum_cache;
